@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Consulta CNPJ/CPF</title>
+    <style>
+    .tab-btn-form { background:#eee; color:#222; border-radius:5px 5px 0 0; border:none; padding:0.5rem 1.2rem; font-weight:bold; cursor:pointer; }
+    .tab-btn-form.active { background:#1976d2; color:#fff; }
+        body {
+            min-height: 100vh;
+            margin: 0;
+            background: #f7f7f7;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        .center-top {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            justify-content: center;
+            margin-top: 60px;
+            gap: 32px;
+        }
+        .form-card {
+            background: #fff;
+            padding: 2rem 2.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+            text-align: center;
+            width: 350px;
+            min-width: 300px;
+            max-width: 400px;
+        }
+        .table-card {
+            background: #fff;
+            padding: 2rem 2.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+            width: 950px;
+            min-width: 600px;
+            max-width: 1200px;
+            text-align: left;
+        }
+        .scroll-table-container {
+            max-height: 500px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            width: 100%;
+        }
+        .scroll-table-container table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        .scroll-table-container td, .scroll-table-container th {
+            word-break: break-word;
+            white-space: pre-line;
+        }
+        .scroll-table-container thead th {
+            position: sticky;
+            top: 0;
+            background: #f0f0f0;
+            z-index: 2;
+        }
+        h1 {
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+        label {
+            display: block;
+            margin: 1rem 0 0.5rem;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="file"] {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+        }
+        button {
+            padding: 0.6rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            background: #1976d2;
+            color: #fff;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        button:disabled {
+            background: #aaa;
+        }
+        .main-container {
+            width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+    <div class="center-top">
+        <div class="form-card">
+            <div style="display:flex; gap:12px; margin-bottom:1rem;">
+                <button type="button" id="btn-aba-consulta" class="tab-btn-form active">Consulta</button>
+                <button type="button" id="btn-aba-config" class="tab-btn-form">Configurações</button>
+            </div>
+            <form method="post" enctype="multipart/form-data" id="consultaForm">
+                <div id="status-indicator" style="display:none; color:#d32f2f; font-weight:bold; margin-bottom:1rem;"></div>
+                {% if error_msg %}
+                    <div style="color:red; margin-bottom:1rem;">{{ error_msg }}</div>
+                {% endif %}
+                {% csrf_token %}
+                <div id="aba-consulta">
+                    <label for="cnpjs">CNPJ(s):</label>
+                    <input type="text" id="cnpjs" name="cnpjs" placeholder="Digite um ou mais CNPJs, separados por vírgula" pattern="[0-9,\s-\/]*" title="Apenas números, vírgulas, traços, barras e espaços são permitidos">
+                    <label for="csv_file">Ou envie um arquivo CSV/XLSX:</label>
+                    <input type="file" id="csv_file" name="csv_file" accept=".csv,.xlsx">
+                </div>
+                <div id="aba-config" style="display:none; margin-bottom:1rem;">
+                    <label for="delay" style="font-weight:bold;">Delay entre consultas (segundos):</label>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <input type="range" id="delay-range" min="0.1" max="10" step="0.1" value="1.2" style="width:140px;">
+                        <input type="number" id="delay" name="delay" min="0.1" max="10" step="0.1" value="1.2" style="width:60px;">
+                        <span style="font-size:0.95em; color:#555;">(Aumente se receber erro de limite)</span>
+                    </div>
+                </div>
+
+                <div id="error-msg" style="color:red; margin-bottom:1rem; display:none;"></div>
+                <button type="submit">Buscar</button>
+                <div id="loading-indicator" style="display:none; color:#1976d2; font-weight:bold; margin-top:0.7rem;">Processando, aguarde...</div>
+                <div id="status-indicator" style="display:none; color:#d32f2f; font-weight:bold; margin-top:0.5rem;"></div>
+            </form>
+            <script>
+            // Abas Consulta/Configurações
+            const btnAbaConsulta = document.getElementById('btn-aba-consulta');
+            const btnAbaConfig = document.getElementById('btn-aba-config');
+            const abaConsulta = document.getElementById('aba-consulta');
+            const abaConfig = document.getElementById('aba-config');
+            btnAbaConsulta.onclick = function() {
+                abaConsulta.style.display = '';
+                abaConfig.style.display = 'none';
+                btnAbaConsulta.classList.add('active');
+                btnAbaConfig.classList.remove('active');
+            };
+            btnAbaConfig.onclick = function() {
+                abaConsulta.style.display = 'none';
+                abaConfig.style.display = '';
+                btnAbaConfig.classList.add('active');
+                btnAbaConsulta.classList.remove('active');
+            };
+
+            // Sincronizar range e number do delay
+            const delayRange = document.getElementById('delay-range');
+            const delayInput = document.getElementById('delay');
+            delayRange.addEventListener('input', function() {
+                delayInput.value = delayRange.value;
+            });
+            delayInput.addEventListener('input', function() {
+                delayRange.value = delayInput.value;
+            });
+            const cnpjInput = document.getElementById('cnpjs');
+            // Ao digitar, remove caracteres não numéricos, exceto vírgula e espaço
+            cnpjInput.addEventListener('input', function(e) {
+                let val = cnpjInput.value;
+                // Permite números, vírgula e espaço
+                val = val.replace(/[^0-9,\s]/g, '');
+                cnpjInput.value = val;
+            });
+            // Ao colar, remove caracteres não numéricos, exceto vírgula e espaço
+            cnpjInput.addEventListener('paste', function(e) {
+                e.preventDefault();
+                let text = (e.clipboardData || window.clipboardData).getData('text');
+                text = text.replace(/[^0-9,\s]/g, '');
+                document.execCommand('insertText', false, text);
+            });
+            let retryInterval = null;
+            document.getElementById('consultaForm').addEventListener('submit', function(e) {
+                const cnpjs = cnpjInput.value.trim();
+                const csv = document.getElementById('csv_file').files.length;
+                const errorMsg = document.getElementById('error-msg');
+                errorMsg.style.display = 'none';
+                errorMsg.textContent = '';
+                if (!cnpjs && !csv) {
+                    errorMsg.textContent = 'Preencha o campo de CNPJ(s) ou envie um arquivo CSV.';
+                    errorMsg.style.display = 'block';
+                    e.preventDefault();
+                }
+                // Validação extra: se CNPJ preenchido, só aceita números, vírgulas e espaços
+                if (cnpjs && !/^[0-9,\s,]+$/.test(cnpjs)) {
+                    errorMsg.textContent = 'O campo CNPJ(s) só pode conter números, vírgulas e espaços.';
+                    errorMsg.style.display = 'block';
+                    e.preventDefault();
+                }
+                // Exibe indicador de carregamento se for upload ou muitos CNPJs
+                if ((csv > 0) || (cnpjs.split(',').length > 5)) {
+                    document.getElementById('loading-indicator').style.display = '';
+                }
+                // Limpa status de retry
+                document.getElementById('status-indicator').style.display = 'none';
+                document.getElementById('status-indicator').textContent = '';
+                // Inicia polling para status de retry
+                if (retryInterval) clearInterval(retryInterval);
+                retryInterval = setInterval(function() {
+                    fetch('/status-retry/')
+                        .then(resp => resp.json())
+                        .then(data => {
+                            if (data.status && data.status.length > 0) {
+                                showRetryStatus(data.status);
+                            } else {
+                                document.getElementById('status-indicator').style.display = 'none';
+                                document.getElementById('status-indicator').textContent = '';
+                            }
+                        });
+                }, 2000);
+            });
+            // Limpa polling ao sair da página
+            window.addEventListener('beforeunload', function() {
+                if (retryInterval) clearInterval(retryInterval);
+            });
+            // Função para exibir status de retry (será chamada pelo backend via websocket ou polling futuramente)
+            function showRetryStatus(msg) {
+                const statusDiv = document.getElementById('status-indicator');
+                statusDiv.textContent = msg;
+                statusDiv.style.display = '';
+            }
+            </script>
+        </div>
+        <div class="table-card">
+            <div style="display:flex; gap:12px; margin-bottom:1rem; align-items:center;">
+                <button type="button" id="btn-resultado" class="tab-btn active">Resultado</button>
+                <button type="button" id="btn-historico" class="tab-btn">Histórico</button>
+                <form id="form-limpar-historico" method="post" style="margin-left:auto; display:none;">
+                    {% csrf_token %}
+                    <input type="hidden" name="limpar_historico" value="1">
+                    <button type="submit" style="background:#d32f2f; color:#fff; border:none; border-radius:5px; padding:0.5rem 1.2rem; font-weight:bold; cursor:pointer;">Limpar</button>
+                </form>
+            </div>
+            <div id="tab-resultado">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+                    <h2 style="font-size:1.1rem; margin:0;">Resultados</h2>
+                    <div>
+                        <a href="{% url 'export_resultado_csv' %}" class="export-btn">Exportar CSV</a>
+                        <a href="{% url 'export_resultado_xlsx' %}" class="export-btn">Exportar XLSX</a>
+                    </div>
+                </div>
+                <div class="scroll-table-container">
+                    <table>
+                        <thead>
+                            <tr style="background:#f0f0f0;">
+                                <th style="padding:8px; border:1px solid #eee; width:150px;">CNPJ</th>
+                                <th style="padding:8px; border:1px solid #eee;">Nome da empresa</th>
+                                <th style="padding:8px; border:1px solid #eee;">E-mail da empresa</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in resultados %}
+                                <tr>
+                                    <td style="padding:8px; border:1px solid #eee;">{{ r.cnpj }}</td>
+                                    <td style="padding:8px; border:1px solid #eee;">{{ r.nome }}</td>
+                                    <td style="padding:8px; border:1px solid #eee;">{{ r.email }}</td>
+                                </tr>
+                            {% empty %}
+                                <tr><td colspan="3" style="text-align:center; color:#888; padding:16px;">Nenhum resultado para exibir.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="tab-historico" style="display:none;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+                    <h2 style="font-size:1.1rem; margin:0;">Histórico de Consultas</h2>
+                    <div>
+                        <a href="{% url 'export_historico_csv' %}" class="export-btn">Exportar CSV</a>
+                        <a href="{% url 'export_historico_xlsx' %}" class="export-btn">Exportar XLSX</a>
+                    </div>
+                </div>
+        <style>
+        .export-btn {
+            background: #1976d2;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 0.4rem 1.1rem;
+            font-weight: bold;
+            text-decoration: none;
+            margin-left: 0.5rem;
+            transition: background 0.2s;
+        }
+        .export-btn:hover {
+            background: #1256a0;
+        }
+        </style>
+                <div class="scroll-table-container">
+                    <table>
+                        <thead>
+                            <tr style="background:#f0f0f0;">
+                                <th style="padding:8px; border:1px solid #eee; width:150px;">Data</th>
+                                <th style="padding:8px; border:1px solid #eee; width:150px;">CNPJ</th>
+                                <th style="padding:8px; border:1px solid #eee;">Nome</th>
+                                <th style="padding:8px; border:1px solid #eee;">E-mail</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if historico %}
+                                {% for h in historico %}
+                                    {% for item in h.resultado %}
+                                        <tr>
+                                            <td style="padding:8px; border:1px solid #eee;">{{ h.data|date:"d/m/Y H:i" }}</td>
+                                            <td style="padding:8px; border:1px solid #eee;">{{ item.cnpj }}</td>
+                                            <td style="padding:8px; border:1px solid #eee;">{{ item.nome }}</td>
+                                            <td style="padding:8px; border:1px solid #eee;">{{ item.email }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                {% endfor %}
+                            {% else %}
+                                <tr><td colspan="4" style="text-align:center; color:#888; padding:16px;">Nenhum histórico encontrado.</td></tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <script>
+            // Alternância de abas Resultado/Histórico
+            const btnResultado = document.getElementById('btn-resultado');
+            const btnHistorico = document.getElementById('btn-historico');
+            const formLimpar = document.getElementById('form-limpar-historico');
+            btnResultado.onclick = function() {
+                document.getElementById('tab-resultado').style.display = '';
+                document.getElementById('tab-historico').style.display = 'none';
+                this.classList.add('active');
+                btnHistorico.classList.remove('active');
+                if (formLimpar) formLimpar.style.display = 'none';
+            };
+            btnHistorico.onclick = function() {
+                document.getElementById('tab-resultado').style.display = 'none';
+                document.getElementById('tab-historico').style.display = '';
+                this.classList.add('active');
+                btnResultado.classList.remove('active');
+                if (formLimpar) formLimpar.style.display = '';
+            };
+            // Exibe botão se já estiver na aba histórico ao carregar
+            window.addEventListener('DOMContentLoaded', function() {
+                if (btnHistorico.classList.contains('active') && formLimpar) {
+                    formLimpar.style.display = '';
+                }
+            });
+            </script>
+            <style>
+            .tab-btn { background:#eee; color:#222; border-radius:5px 5px 0 0; border:none; padding:0.5rem 1.2rem; font-weight:bold; cursor:pointer; }
+            .tab-btn.active { background:#1976d2; color:#fff; }
+            </style>
+        </div>
+    </div>
+    </div>
+</body>
+</html>

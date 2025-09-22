@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+dist/
+build/
+
+# Django
+# If you ever use SQLite locally
+db.sqlite3
+
+# Static and media (collectstatic output and uploaded files)
+static/
+staticfiles/
+media/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment & secrets
+.env
+
+# IDE/editor
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Tests/coverage
+.pytest_cache/
+.coverage
+*.cover
+htmlcov/
+
+# Logs
+*.log
+
+# Node (in case of frontend tooling)
+node_modules/
+
+# OS junk
+ehthumbs.db
+
+# Requested: ignore GitHub config directory
+.github/
