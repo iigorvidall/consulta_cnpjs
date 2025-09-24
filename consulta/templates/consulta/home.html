@@ -125,7 +125,12 @@
                 
 
                 <div id="error-msg" style="color:red; margin-bottom:1rem; display:none;"></div>
-                <button type="submit">Buscar</button>
+                <button type="submit" id="btn-buscar">Buscar</button>
+                <div style="margin-top:8px; display:flex; gap:8px; justify-content:center;">
+                    <button type="button" id="btn-pausar" style="display:none; background:#f57c00;">Pausar</button>
+                    <button type="button" id="btn-retomar" style="display:none; background:#388e3c;">Retomar</button>
+                    <button type="button" id="btn-cancelar" style="display:none; background:#d32f2f;">Cancelar</button>
+                </div>
                 <div id="loading-indicator" style="display:none; color:#1976d2; font-weight:bold; margin-top:0.7rem;">Processando, aguarde...</div>
                 
             </form>
@@ -154,7 +159,12 @@
                 document.execCommand('insertText', false, text);
             });
             let retryInterval = null;
-            document.getElementById('consultaForm').addEventListener('submit', function(e) {
+            const btnBuscar = document.getElementById('btn-buscar');
+            const btnPausar = document.getElementById('btn-pausar');
+            const btnRetomar = document.getElementById('btn-retomar');
+            const btnCancelar = document.getElementById('btn-cancelar');
+            let loopActive = false, paused = false, cancelled = false;
+            document.getElementById('consultaForm').addEventListener('submit', async function(e) {
                 const cnpjs = cnpjInput.value.trim();
                 const csv = document.getElementById('csv_file').files.length;
                 const errorMsg = document.getElementById('error-msg');
@@ -164,34 +174,136 @@
                     errorMsg.textContent = 'Preencha o campo de CNPJ(s) ou envie um arquivo CSV.';
                     errorMsg.style.display = 'block';
                     e.preventDefault();
+                    return;
                 }
                 // Validação extra: se CNPJ preenchido, só aceita números, vírgulas e espaços
                 if (cnpjs && !/^[0-9,\s,]+$/.test(cnpjs)) {
                     errorMsg.textContent = 'O campo CNPJ(s) só pode conter números, vírgulas e espaços.';
                     errorMsg.style.display = 'block';
                     e.preventDefault();
+                    return;
                 }
-                // Exibe indicador de carregamento se for upload ou muitos CNPJs
-                if ((csv > 0) || (cnpjs.split(',').length > 5)) {
-                    document.getElementById('loading-indicator').style.display = '';
+                // A partir daqui, usamos o fluxo "simples e rápido" (AJAX sequencial)
+                e.preventDefault();
+                document.getElementById('loading-indicator').style.display = '';
+                btnBuscar.disabled = true;
+                btnPausar.style.display = '';
+                btnCancelar.style.display = '';
+                btnRetomar.style.display = 'none';
+                paused = false; cancelled = false; loopActive = true;
+                const tbody = document.querySelector('#tab-resultado tbody');
+                // Limpa tabela para nova execução
+                tbody.innerHTML = '';
+                // Adiciona barra de progresso simples
+                let progressEl = document.getElementById('progress-indicator');
+                if (!progressEl) {
+                    progressEl = document.createElement('div');
+                    progressEl.id = 'progress-indicator';
+                    progressEl.style.marginTop = '8px';
+                    progressEl.style.fontWeight = 'bold';
+                    document.getElementById('consultaForm').appendChild(progressEl);
                 }
-                // Limpa status de retry
-                document.getElementById('status-indicator').style.display = 'none';
-                document.getElementById('status-indicator').textContent = '';
-                // Inicia polling para status de retry
-                if (retryInterval) clearInterval(retryInterval);
-                retryInterval = setInterval(function() {
-                    fetch('/status-retry/')
-                        .then(resp => resp.json())
-                        .then(data => {
-                            if (data.status && data.status.length > 0) {
-                                showRetryStatus(data.status);
-                            } else {
-                                document.getElementById('status-indicator').style.display = 'none';
-                                document.getElementById('status-indicator').textContent = '';
-                            }
-                        });
-                }, 2000);
+
+                // 1) Start job
+                let startResp;
+                if (csv > 0) {
+                    const formData = new FormData();
+                    formData.append('csv_file', document.getElementById('csv_file').files[0]);
+                    startResp = await fetch('/jobs/start/', { method: 'POST', body: formData });
+                } else {
+                    startResp = await fetch('/jobs/start/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ cnpjs })
+                    });
+                }
+                if (!startResp.ok) {
+                    const err = await startResp.json().catch(() => ({}));
+                    errorMsg.textContent = err.detail || 'Falha ao iniciar o processamento.';
+                    errorMsg.style.display = 'block';
+                    document.getElementById('loading-indicator').style.display = 'none';
+                    return;
+                }
+                const startData = await startResp.json();
+                const total = startData.total || 0;
+                progressEl.textContent = `Progresso: 0/${total}`;
+
+                // 2) Loop de passos
+                let processed = 0;
+                while (loopActive && !cancelled && processed < total) {
+                    if (paused) { await new Promise(r => setTimeout(r, 800)); continue; }
+                    const stepResp = await fetch('/jobs/step/', { method: 'POST' });
+                    if (!stepResp.ok) break;
+                    const stepData = await stepResp.json();
+                    if (stepData.status === 'paused') { paused = true; btnPausar.style.display = 'none'; btnRetomar.style.display = ''; continue; }
+                    if (stepData.status === 'cancelled') { cancelled = true; loopActive = false; break; }
+                    if (stepData.status === 'done') { processed = stepData.processed; progressEl.textContent = `Progresso: ${processed}/${total}`; break; }
+                    if (stepData.item) {
+                        processed = stepData.processed;
+                        const r = stepData.item;
+                        const tr = document.createElement('tr');
+                        const email = (!r.email || r.email === '-') ? 'Sem e-mail' : r.email;
+                        tr.innerHTML = `
+                            <td style="padding:8px; border:1px solid #eee;">${r.cnpj || '-'}</td>
+                            <td style="padding:8px; border:1px solid #eee;">${r.nome || '-'}</td>
+                            <td style="padding:8px; border:1px solid #eee;">${email}</td>
+                        `;
+                        tbody.appendChild(tr);
+                        progressEl.textContent = `Progresso: ${processed}/${total}`;
+                    }
+                }
+                document.getElementById('loading-indicator').style.display = 'none';
+                btnBuscar.disabled = false;
+                btnPausar.style.display = 'none';
+                btnRetomar.style.display = 'none';
+                btnCancelar.style.display = 'none';
+                // Finaliza job: persiste no histórico (sem recarregar a página)
+                try {
+                    if (!cancelled) {
+                        const resp = await fetch('/jobs/finalize/', { method: 'POST' });
+                        if (resp.ok) {
+                        // Mostra mensagem sutil de sucesso sem apagar a tabela
+                        let doneEl = document.getElementById('done-indicator');
+                        if (!doneEl) {
+                            doneEl = document.createElement('div');
+                            doneEl.id = 'done-indicator';
+                            doneEl.style.marginTop = '8px';
+                            doneEl.style.color = '#2e7d32';
+                            doneEl.style.fontWeight = 'bold';
+                            document.getElementById('consultaForm').appendChild(doneEl);
+                        }
+                            doneEl.textContent = 'Processamento concluído e salvo no histórico.';
+                        }
+                    }
+                } catch (e) {
+                    console.error('Falha ao salvar histórico:', e);
+                }
+            });
+            // Controles: Pausar/Retomar/Cancelar
+            btnPausar.addEventListener('click', async () => {
+                await fetch('/jobs/pause/', { method: 'POST' });
+                paused = true; btnPausar.style.display = 'none'; btnRetomar.style.display = '';
+            });
+            btnRetomar.addEventListener('click', async () => {
+                await fetch('/jobs/resume/', { method: 'POST' });
+                paused = false; btnRetomar.style.display = 'none'; btnPausar.style.display = '';
+            });
+            btnCancelar.addEventListener('click', async () => {
+                cancelled = true; loopActive = false;
+                await fetch('/jobs/cancel/', { method: 'POST' });
+                document.getElementById('loading-indicator').style.display = 'none';
+                btnBuscar.disabled = false;
+                btnPausar.style.display = 'none'; btnRetomar.style.display = 'none'; btnCancelar.style.display = 'none';
+                let doneEl = document.getElementById('done-indicator');
+                if (!doneEl) {
+                    doneEl = document.createElement('div');
+                    doneEl.id = 'done-indicator';
+                    doneEl.style.marginTop = '8px';
+                    doneEl.style.color = '#d32f2f';
+                    doneEl.style.fontWeight = 'bold';
+                    document.getElementById('consultaForm').appendChild(doneEl);
+                }
+                doneEl.textContent = 'Processamento cancelado pelo usuário.';
             });
             // Limpa polling ao sair da página
             window.addEventListener('beforeunload', function() {
@@ -237,7 +349,7 @@
                                 <tr>
                                     <td style="padding:8px; border:1px solid #eee;">{{ r.cnpj }}</td>
                                     <td style="padding:8px; border:1px solid #eee;">{{ r.nome }}</td>
-                                    <td style="padding:8px; border:1px solid #eee;">{{ r.email }}</td>
+                                    <td style="padding:8px; border:1px solid #eee;">{% if r.email and r.email != '-' %}{{ r.email }}{% else %}Sem e-mail{% endif %}</td>
                                 </tr>
                             {% empty %}
                                 <tr><td colspan="3" style="text-align:center; color:#888; padding:16px;">Nenhum resultado para exibir.</td></tr>

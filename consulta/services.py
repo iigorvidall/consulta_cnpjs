@@ -1,12 +1,12 @@
 import re
-import requests
 import csv
 import io
 import time
 import openpyxl
 import xlsxwriter
+from clients.cnpja import CNPJAClient, CNPJAClientError
 
-DELAY_SECONDS = 1  # Delay fixo entre consultas
+DELAY_SECONDS = 12  # Delay fixo entre consultas (aumentado para ambiente sem PRO)
 
 def processar_cnpjs_manualmente(cnpjs: str, on_retry=None):
     cnpj_list = [clean_cnpj(c) for c in cnpjs.split(',') if clean_cnpj(c)]
@@ -27,34 +27,53 @@ def format_cnpj(cnpj):
     return cnpj
 
 def consultar_cnpj_api(cnpj, retry_count=3, retry_wait=20, on_retry=None):
+    client = CNPJAClient()
+    clean = clean_cnpj(cnpj)
     for attempt in range(retry_count):
-        resp = requests.get(f'https://open.cnpja.com/office/{cnpj}', timeout=10)
-        if resp.status_code == 200:
-            data = resp.json()
-            nome = data.get('company', {}).get('name', '-')
-            email = '-'
-            emails = data.get('emails', [])
-            if emails and isinstance(emails, list):
-                email = emails[0].get('address', '-')
+        try:
+            data = client.get_office(clean, timeout=15)
+            # Extração resiliente de nome e email a partir do payload da API PRO
+            nome = (
+                (data.get('company') or {}).get('name')
+                or data.get('name')
+                or '-'
+            )
+            email = 'Sem e-mail'
+            emails = data.get('emails')
+            if isinstance(emails, list) and emails:
+                first = emails[0]
+                if isinstance(first, dict):
+                    email = first.get('address') or first.get('email') or 'Sem e-mail'
+                elif isinstance(first, str):
+                    email = first
             return {
-                'cnpj': format_cnpj(cnpj),
+                'cnpj': format_cnpj(clean),
                 'nome': nome,
                 'email': email
             }
-        elif resp.status_code == 429:
-            if on_retry:
-                on_retry(attempt+1, retry_wait)
-            time.sleep(retry_wait)
-        else:
+        except CNPJAClientError as e:
+            msg = str(e)
+            # Se for rate limit, aguarda e tenta novamente
+            if '429' in msg:
+                if on_retry:
+                    on_retry(attempt+1, retry_wait)
+                time.sleep(retry_wait)
+                continue
             return {
-                'cnpj': format_cnpj(cnpj),
+                'cnpj': format_cnpj(clean),
                 'nome': '-',
-                'email': f'API retornou status {resp.status_code}: {resp.text[:200]}'
+                'email': f'Erro API PRO: {msg[:200]}'
+            }
+        except Exception as e:
+            return {
+                'cnpj': format_cnpj(clean),
+                'nome': '-',
+                'email': f'Erro inesperado: {str(e)[:200]}'
             }
     return {
-        'cnpj': format_cnpj(cnpj),
+        'cnpj': format_cnpj(clean),
         'nome': '-',
-        'email': 'API retornou status 429: Limite de requisições excedido após múltiplas tentativas.'
+        'email': 'Limite de tentativas excedido devido a rate limit (429).'
     }
 
 def processar_csv(file, logger=None, on_retry=None):
@@ -121,7 +140,10 @@ def exportar_csv(resultados, include_data=False):
     else:
         writer.writerow(['CNPJ', 'Nome', 'E-mail'])
         for r in resultados:
-            writer.writerow([r.get('cnpj', ''), r.get('nome', ''), r.get('email', '')])
+            email = r.get('email', '')
+            if email in ('', '-', None):
+                email = 'Sem e-mail'
+            writer.writerow([r.get('cnpj', ''), r.get('nome', ''), email])
     return output.getvalue()
 
 def exportar_xlsx(resultados, include_data=False):
@@ -135,7 +157,10 @@ def exportar_xlsx(resultados, include_data=False):
     else:
         ws.write_row(0, 0, ['CNPJ', 'Nome', 'E-mail'])
         for idx, r in enumerate(resultados, 1):
-            ws.write_row(idx, 0, [r.get('cnpj', ''), r.get('nome', ''), r.get('email', '')])
+            email = r.get('email', '')
+            if email in ('', '-', None):
+                email = 'Sem e-mail'
+            ws.write_row(idx, 0, [r.get('cnpj', ''), r.get('nome', ''), email])
     wb.close()
     output.seek(0)
     return output.read()

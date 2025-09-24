@@ -21,6 +21,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'consulta',
+    'rest_framework',
 ]
 
 MIDDLEWARE = [
@@ -90,3 +91,22 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# --- CNPJá PRO API ---
+CNPJA_API_KEY = os.getenv("CNPJA_API_KEY")
+CNPJA_BASE_URL = os.getenv("CNPJA_BASE_URL", "https://api.cnpja.com")
+
+# --- DRF settings ---
+REST_FRAMEWORK = {
+    # Throttling global (pode ser ajustado conforme necessidade)
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    # Exemplo: 100 requisições/hora por IP anônimo e 1000/hora por usuário autenticado
+    'DEFAULT_THROTTLE_RATES': {
+        # Limite global: 100 requisições por minuto para todos os endpoints
+        'anon': '100/minute',
+        'user': '100/minute',
+    },
+}

@@ -4,6 +4,16 @@ from .models import ConsultaHistorico
 import logging
 from django.http import HttpResponse
 from .services import clean_cnpj, format_cnpj, consultar_cnpj_api, processar_csv, processar_xlsx, exportar_csv, exportar_xlsx, processar_cnpjs_manualmente
+from clients.cnpja import CNPJAClient, CNPJAClientError
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .serializers import CNPJQuerySerializer
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+import json
+import re
 
 def status_retry(request):
 	status = request.session.get('status_retry', '')
@@ -106,3 +116,269 @@ def export_historico_xlsx(request):
 	response = HttpResponse(xlsx_data, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 	response['Content-Disposition'] = 'attachment; filename="historico.xlsx"'
 	return response
+
+
+class ConsultaCNPJView(APIView):
+	"""GET /cnpj/<cnpj>/ retorna o JSON completo da API PRO do CNPJÁ."""
+	def get(self, request, cnpj: str):
+		s = CNPJQuerySerializer(data={'cnpj': cnpj})
+		if not s.is_valid():
+			return Response(s.errors, status=status.HTTP_400_BAD_REQUEST)
+		cnpj_digits = s.validated_data['cnpj']
+		try:
+			client = CNPJAClient()
+			data = client.get_office(cnpj_digits)
+			return Response(data, status=status.HTTP_200_OK)
+		except CNPJAClientError as e:
+			return Response({ 'detail': str(e) }, status=status.HTTP_400_BAD_REQUEST)
+		except Exception:
+			return Response({ 'detail': 'Erro interno ao consultar CNPJ' }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# --------- Abordagem simples com polling (sem Celery) ---------
+
+def _init_job_session(request, cnpjs_list):
+	# Normaliza e remove duplicados preservando a ordem
+	clean_list = [clean_cnpj(c) for c in cnpjs_list if clean_cnpj(c)]
+	clean_list = list(dict.fromkeys(clean_list))
+	job = {
+		'queue': clean_list,
+		'processed': 0,
+		'total': len(clean_list),
+		'results': [],
+		'status': 'running',  # running | paused | cancelled
+		'tipo': None,
+		'arquivo_nome': None,
+		'cnpjs_str': ','.join(clean_list),
+	}
+	request.session['job'] = job
+	request.session.modified = True
+	return job
+
+
+@require_http_methods(["POST"])
+@csrf_exempt
+def jobs_start(request):
+	"""Inicia um job a partir de CSV/XLSX ou lista manual de CNPJs, salvando na sessão."""
+	# Use o content-type para decidir como ler o corpo, evitando RawPostDataException
+	content_type = (request.META.get('CONTENT_TYPE') or '').lower()
+	cnpjs_list = []
+
+	if content_type.startswith('application/json'):
+		# Não toque em request.POST/FILES aqui
+		try:
+			payload = json.loads((request.body or b'{}').decode('utf-8'))
+		except Exception:
+			payload = {}
+		cnpjs_raw = (payload.get('cnpjs') or '').strip()
+		if cnpjs_raw:
+			cnpjs_list = [c.strip() for c in cnpjs_raw.split(',') if c.strip()]
+		job = _init_job_session(request, cnpjs_list)
+		job['tipo'] = 'manual'
+		request.session['job'] = job
+		request.session.modified = True
+		return JsonResponse({'total': job['total']})
+	else:
+		# multipart/form-data ou x-www-form-urlencoded
+		cnpjs_raw = (request.POST.get('cnpjs') or '').strip()
+		if cnpjs_raw:
+			cnpjs_list = [c.strip() for c in cnpjs_raw.split(',') if c.strip()]
+		if not cnpjs_list:
+			up_file = request.FILES.get('csv_file')
+			if up_file:
+				fname = (up_file.name or '').lower()
+				try:
+					if fname.endswith('.xlsx'):
+						# Extrai CNPJs do XLSX via openpyxl
+						import openpyxl as _openpyxl
+						wb = _openpyxl.load_workbook(up_file, read_only=True, data_only=True)
+						ws = wb.active
+						header_row = next(ws.iter_rows(min_row=1, max_row=1))
+						headers = [str(c.value).strip().lower() if c.value else '' for c in header_row]
+						keys = ['cnpj', 'cnpj/cpf', 'cnpj_cpf']
+						cnpj_idx = None
+						for idx, h in enumerate(headers):
+							if any(k in h for k in keys):
+								cnpj_idx = idx
+								break
+						if cnpj_idx is not None:
+							for row in ws.iter_rows(min_row=2):
+								val = row[cnpj_idx].value if cnpj_idx < len(row) else ''
+								cnpj_val = clean_cnpj(str(val) if val is not None else '')
+								if len(cnpj_val) == 14:
+									cnpjs_list.append(cnpj_val)
+						else:
+							# Fallback: varre todas as células procurando padrões de CNPJ
+							pattern = re.compile(r"\d{2}\D?\d{3}\D?\d{3}\D?\d{4}\D?\d{2}")
+							for row in ws.iter_rows(min_row=1):
+								for cell in row:
+									if cell.value is None:
+										continue
+									text = str(cell.value)
+									for m in pattern.findall(text):
+										digits = clean_cnpj(m)
+										if len(digits) == 14:
+											cnpjs_list.append(digits)
+					elif fname.endswith('.csv'):
+						# Extrai CNPJs do CSV com fallback de encoding
+						raw = up_file.read()
+						try:
+							decoded = raw.decode('utf-8-sig')
+						except UnicodeDecodeError:
+							decoded = raw.decode('latin-1')
+						import csv as _csv
+						import io as _io
+						sio = _io.StringIO(decoded)
+						# Tenta DictReader primeiro
+						try:
+							reader = _csv.DictReader(sio)
+							keys = ['cnpj', 'CNPJ', 'CNPJ/CPF', 'cnpj_cpf']
+							found_by_header = False
+							for row in reader:
+								matched_this_row = False
+								for key in row:
+									if key is None:
+										continue
+									if any(k.lower() in key.lower() for k in keys):
+										cnpj_val = clean_cnpj(row[key])
+										if len(cnpj_val) == 14:
+											cnpjs_list.append(cnpj_val)
+											matched_this_row = True
+											found_by_header = True
+								if not matched_this_row:
+									# Fallback por linha: vasculha todos os valores
+									pattern = re.compile(r"\d{2}\D?\d{3}\D?\d{3}\D?\d{4}\D?\d{2}")
+									for v in row.values():
+										if not v:
+											continue
+										for m in pattern.findall(str(v)):
+											digits = clean_cnpj(m)
+											if len(digits) == 14:
+												cnpjs_list.append(digits)
+						except Exception:
+							# Se DictReader não funcionar bem (csv caótico), usa csv.reader
+							sio.seek(0)
+							reader2 = _csv.reader(sio)
+							pattern = re.compile(r"\d{2}\D?\d{3}\D?\d{3}\D?\d{4}\D?\d{2}")
+							for row in reader2:
+								for field in row:
+									for m in pattern.findall(str(field)):
+										digits = clean_cnpj(m)
+										if len(digits) == 14:
+											cnpjs_list.append(digits)
+					else:
+						return JsonResponse({'detail': 'Tipo de arquivo não suportado. Envie CSV ou XLSX.'}, status=400)
+				except Exception as e:
+					return JsonResponse({'detail': f'Erro ao ler arquivo: {str(e)}'}, status=400)
+		if not cnpjs_list:
+			return JsonResponse({'detail': 'Informe cnpjs (JSON/POST) ou envie csv_file.'}, status=400)
+		job = _init_job_session(request, cnpjs_list)
+		# Define metadados do job conforme origem
+		if request.FILES.get('csv_file'):
+			job['tipo'] = 'upload'
+			job['arquivo_nome'] = request.FILES['csv_file'].name
+		else:
+			job['tipo'] = 'manual'
+		request.session['job'] = job
+		request.session.modified = True
+		return JsonResponse({'total': job['total']})
+
+
+@require_http_methods(["POST"])
+@csrf_exempt
+def jobs_step(request):
+	"""Processa um item da fila do job na sessão e retorna o resultado parcial."""
+	import time
+	from .services import DELAY_SECONDS
+	job = request.session.get('job')
+	if not job:
+		return JsonResponse({'detail': 'Nenhum job em andamento.'}, status=400)
+	queue = job.get('queue', [])
+	processed = job.get('processed', 0)
+	total = job.get('total', 0)
+	results = job.get('results', [])
+	status_job = job.get('status', 'running')
+	if status_job == 'paused':
+		return JsonResponse({'status': 'paused', 'processed': processed, 'total': total, 'item': None})
+	if status_job == 'cancelled':
+		return JsonResponse({'status': 'cancelled', 'processed': processed, 'total': total, 'item': None})
+	if processed >= total or not queue:
+		return JsonResponse({'status': 'done', 'processed': processed, 'total': total, 'item': None})
+	time.sleep(DELAY_SECONDS)
+	cnpj = queue.pop(0)
+	try:
+		resultado = consultar_cnpj_api(cnpj)
+	except Exception as e:
+		resultado = {'cnpj': cnpj, 'nome': '-', 'email': f'Erro: {str(e)}'}
+	results.append(resultado)
+	processed += 1
+	job.update({'queue': queue, 'processed': processed, 'total': total, 'results': results})
+	request.session['job'] = job
+	request.session['ultimos_resultados'] = results  # mantém export funcionando
+	request.session.modified = True
+	return JsonResponse({'status': 'running', 'processed': processed, 'total': total, 'item': resultado})
+
+
+@require_http_methods(["POST"])
+@csrf_exempt
+def jobs_finalize(request):
+	"""Persiste os resultados do job no histórico e finaliza, limpando o job da sessão."""
+	job = request.session.get('job')
+	if not job:
+		return JsonResponse({'detail': 'Nenhum job em andamento.'}, status=400)
+	try:
+		tipo = job.get('tipo') or 'manual'
+		cnpjs_registro = job.get('cnpjs_str') or ''
+		arquivo_nome = job.get('arquivo_nome')
+		resultados = job.get('results') or []
+		if resultados:
+			ConsultaHistorico.objects.create(
+				tipo=tipo,
+				cnpjs=cnpjs_registro,
+				arquivo_nome=arquivo_nome,
+				resultado=resultados,
+			)
+		# limpar job
+		request.session.pop('job', None)
+		request.session.modified = True
+		return JsonResponse({'status': 'ok'})
+	except Exception as e:
+		return JsonResponse({'detail': f'Erro ao salvar histórico: {str(e)}'}, status=500)
+
+
+@require_http_methods(["POST"])
+@csrf_exempt
+def jobs_pause(request):
+	job = request.session.get('job')
+	if not job:
+		return JsonResponse({'detail': 'Nenhum job em andamento.'}, status=400)
+	job['status'] = 'paused'
+	request.session['job'] = job
+	request.session.modified = True
+	return JsonResponse({'status': 'paused'})
+
+
+@require_http_methods(["POST"])
+@csrf_exempt
+def jobs_resume(request):
+	job = request.session.get('job')
+	if not job:
+		return JsonResponse({'detail': 'Nenhum job em andamento.'}, status=400)
+	job['status'] = 'running'
+	request.session['job'] = job
+	request.session.modified = True
+	return JsonResponse({'status': 'running'})
+
+
+@require_http_methods(["POST"])
+@csrf_exempt
+def jobs_cancel(request):
+	job = request.session.get('job')
+	if not job:
+		return JsonResponse({'detail': 'Nenhum job em andamento.'}, status=400)
+	job['status'] = 'cancelled'
+	# limpa a fila restante para encerrar imediatamente
+	job['queue'] = []
+	request.session['job'] = job
+	request.session.modified = True
+	return JsonResponse({'status': 'cancelled'})
