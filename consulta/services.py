@@ -5,15 +5,16 @@ import io
 import time
 import openpyxl
 import xlsxwriter
-from django.conf import settings
 
-def processar_cnpjs_manualmente(cnpjs: str, delay=0.5, on_retry=None):
+DELAY_SECONDS = 1  # Delay fixo entre consultas
+
+def processar_cnpjs_manualmente(cnpjs: str, on_retry=None):
     cnpj_list = [clean_cnpj(c) for c in cnpjs.split(',') if clean_cnpj(c)]
     resultados = []
     for cnpj in cnpj_list:
         resultado = consultar_cnpj_api(cnpj, on_retry=on_retry)
         resultados.append(resultado)
-        time.sleep(delay)
+        time.sleep(DELAY_SECONDS)
     return cnpj_list, resultados
 
 def clean_cnpj(cnpj):
@@ -56,7 +57,7 @@ def consultar_cnpj_api(cnpj, retry_count=3, retry_wait=20, on_retry=None):
         'email': 'API retornou status 429: Limite de requisições excedido após múltiplas tentativas.'
     }
 
-def processar_csv(file, logger=None, delay=0.5, on_retry=None):
+def processar_csv(file, logger=None, on_retry=None):
     decoded = file.read().decode('utf-8')
     reader = csv.DictReader(io.StringIO(decoded))
     cnpj_keys = ['cnpj', 'CNPJ', 'CNPJ/CPF', 'cnpj_cpf']
@@ -79,10 +80,10 @@ def processar_csv(file, logger=None, delay=0.5, on_retry=None):
                 if logger:
                     logger.error(f'Erro ao consultar CNPJ {cnpj_val}: {e}')
                 resultados.append({'cnpj': format_cnpj(cnpj_val), 'nome': '-', 'email': f'Erro: {str(e)}'})
-            time.sleep(delay)
+            time.sleep(DELAY_SECONDS)
     return resultados
 
-def processar_xlsx(file, logger=None, delay=0.5, on_retry=None):
+def processar_xlsx(file, logger=None, on_retry=None):
     wb = openpyxl.load_workbook(file, read_only=True)
     ws = wb.active
     headers = [str(cell.value).strip() if cell.value else '' for cell in next(ws.iter_rows(min_row=1, max_row=1))]
@@ -102,7 +103,7 @@ def processar_xlsx(file, logger=None, delay=0.5, on_retry=None):
                 resultados.append(resultado)
             except Exception as e:
                 resultados.append({'cnpj': format_cnpj(cnpj_val), 'nome': '-', 'email': f'Erro: {str(e)}'})
-            time.sleep(delay)
+            time.sleep(DELAY_SECONDS)
     return resultados
 
 def exportar_csv(resultados, include_data=False):

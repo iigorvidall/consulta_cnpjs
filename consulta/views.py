@@ -22,13 +22,6 @@ def home(request):
 		logger = logging.getLogger('consulta')
 		cnpjs = request.POST.get('cnpjs', '').strip()
 		csv_file = request.FILES.get('csv_file')
-		delay = request.POST.get('delay')
-		try:
-			delay = float(delay)
-			if delay < 0.1:
-				delay = 0.1
-		except Exception:
-			delay = 0.5
 		tipo = None
 		cnpjs_registro = ''
 
@@ -37,18 +30,18 @@ def home(request):
 
 		if cnpjs:
 			tipo = 'manual'
-			cnpj_list, resultados = processar_cnpjs_manualmente(cnpjs, delay=delay, on_retry=on_retry)
+			cnpj_list, resultados = processar_cnpjs_manualmente(cnpjs, on_retry=on_retry)
 			cnpjs_registro = ','.join(cnpj_list)
 		elif csv_file:
 			tipo = 'upload'
 			if csv_file.name.lower().endswith('.csv'):
 				try:
-					resultados = processar_csv(csv_file, logger=logger, delay=delay, on_retry=on_retry)
+					resultados = processar_csv(csv_file, logger=logger, on_retry=on_retry)
 				except Exception as e:
 					error_msg = f'Erro ao processar o arquivo: {str(e)}'
 			elif csv_file.name.lower().endswith('.xlsx'):
 				try:
-					resultados = processar_xlsx(csv_file, logger=logger, delay=delay, on_retry=on_retry)
+					resultados = processar_xlsx(csv_file, logger=logger, on_retry=on_retry)
 				except Exception as e:
 					error_msg = f'Erro ao processar o arquivo: {str(e)}'
 			else:

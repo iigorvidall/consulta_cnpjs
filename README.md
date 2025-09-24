@@ -5,7 +5,7 @@ Sistema web para consulta de informações de empresas a partir de CNPJ (e CPF, 
 ## Funcionalidades
 - Consulta individual ou em lote de CNPJs
 - Upload de arquivos CSV/XLSX para consulta em massa
-- Delay configurável entre consultas para evitar bloqueios
+- Delay fixo de 1 segundo entre consultas para evitar bloqueios
 - Histórico das consultas realizadas
 - Exportação dos resultados e histórico em CSV/XLSX
 - Interface web moderna e responsiva
@@ -69,7 +69,7 @@ consulta_cnpj_cpf/
 
 ## Configurações
 - Configure variáveis sensíveis (ex: chaves de API) no arquivo `.env` ou diretamente em `settings.py`.
-- O delay padrão entre consultas pode ser ajustado na interface.
+- O delay entre consultas é fixo em 1 segundo (não configurável na interface).
 
 ## Licença
 Este projeto é de uso interno IGNEA-comporativo. Para uso externo, consulte o responsável pelo projeto.

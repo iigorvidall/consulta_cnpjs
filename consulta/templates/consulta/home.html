@@ -107,7 +107,8 @@
         <div class="form-card">
             <div style="display:flex; gap:12px; margin-bottom:1rem;">
                 <button type="button" id="btn-aba-consulta" class="tab-btn-form active">Consulta</button>
-                <button type="button" id="btn-aba-config" class="tab-btn-form">Configurações</button>
+                <!-- Configurações removidas: delay fixo definido no backend -->
+                
             </div>
             <form method="post" enctype="multipart/form-data" id="consultaForm">
                 <div id="status-indicator" style="display:none; color:#d32f2f; font-weight:bold; margin-bottom:1rem;"></div>
@@ -121,48 +122,22 @@
                     <label for="csv_file">Ou envie um arquivo CSV/XLSX:</label>
                     <input type="file" id="csv_file" name="csv_file" accept=".csv,.xlsx">
                 </div>
-                <div id="aba-config" style="display:none; margin-bottom:1rem;">
-                    <label for="delay" style="font-weight:bold;">Delay entre consultas (segundos):</label>
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <input type="range" id="delay-range" min="0.1" max="10" step="0.1" value="1.2" style="width:140px;">
-                        <input type="number" id="delay" name="delay" min="0.1" max="10" step="0.1" value="1.2" style="width:60px;">
-                        <span style="font-size:0.95em; color:#555;">(Aumente se receber erro de limite)</span>
-                    </div>
-                </div>
+                
 
                 <div id="error-msg" style="color:red; margin-bottom:1rem; display:none;"></div>
                 <button type="submit">Buscar</button>
                 <div id="loading-indicator" style="display:none; color:#1976d2; font-weight:bold; margin-top:0.7rem;">Processando, aguarde...</div>
-                <div id="status-indicator" style="display:none; color:#d32f2f; font-weight:bold; margin-top:0.5rem;"></div>
+                
             </form>
             <script>
             // Abas Consulta/Configurações
             const btnAbaConsulta = document.getElementById('btn-aba-consulta');
-            const btnAbaConfig = document.getElementById('btn-aba-config');
             const abaConsulta = document.getElementById('aba-consulta');
-            const abaConfig = document.getElementById('aba-config');
-            btnAbaConsulta.onclick = function() {
-                abaConsulta.style.display = '';
-                abaConfig.style.display = 'none';
-                btnAbaConsulta.classList.add('active');
-                btnAbaConfig.classList.remove('active');
-            };
-            btnAbaConfig.onclick = function() {
-                abaConsulta.style.display = 'none';
-                abaConfig.style.display = '';
-                btnAbaConfig.classList.add('active');
-                btnAbaConsulta.classList.remove('active');
-            };
+            // Aba de configurações removida; sempre mostrar aba de consulta
+            abaConsulta.style.display = '';
+            btnAbaConsulta.classList.add('active');
 
-            // Sincronizar range e number do delay
-            const delayRange = document.getElementById('delay-range');
-            const delayInput = document.getElementById('delay');
-            delayRange.addEventListener('input', function() {
-                delayInput.value = delayRange.value;
-            });
-            delayInput.addEventListener('input', function() {
-                delayRange.value = delayInput.value;
-            });
+            // Controles de delay removidos (delay fixo no backend)
             const cnpjInput = document.getElementById('cnpjs');
             // Ao digitar, remove caracteres não numéricos, exceto vírgula e espaço
             cnpjInput.addEventListener('input', function(e) {
