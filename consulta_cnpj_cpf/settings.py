@@ -95,6 +95,18 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # --- CNPJá PRO API ---
 CNPJA_API_KEY = os.getenv("CNPJA_API_KEY")
 CNPJA_BASE_URL = os.getenv("CNPJA_BASE_URL", "https://api.cnpja.com")
+# Estratégia de cache da API CNPJá (CACHE, CACHE_IF_FRESH, CACHE_IF_ERROR, ONLINE)
+CNPJA_STRATEGY = os.getenv("CNPJA_STRATEGY", "CACHE_IF_FRESH")
+# Quantos dias os dados em cache são considerados "frescos" (usado com CACHE_IF_FRESH/CACHE_IF_ERROR)
+try:
+    CNPJA_MAX_AGE_DAYS = int(os.getenv("CNPJA_MAX_AGE_DAYS", "14"))
+except ValueError:
+    CNPJA_MAX_AGE_DAYS = 14
+# Por quantos dias além do maxAge o cache ainda pode ser retornado em caso de falha online (usado com CACHE_IF_ERROR)
+try:
+    CNPJA_MAX_STALE_DAYS = int(os.getenv("CNPJA_MAX_STALE_DAYS", "30"))
+except ValueError:
+    CNPJA_MAX_STALE_DAYS = 30
 
 # --- DRF settings ---
 REST_FRAMEWORK = {

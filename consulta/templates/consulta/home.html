@@ -244,6 +244,7 @@
                         const tr = document.createElement('tr');
                         const email = (!r.email || r.email === '-') ? 'Sem e-mail' : r.email;
                         tr.innerHTML = `
+                            <td style="padding:8px; border:1px solid #eee;">${r.processo || ''}</td>
                             <td style="padding:8px; border:1px solid #eee;">${r.cnpj || '-'}</td>
                             <td style="padding:8px; border:1px solid #eee;">${r.nome || '-'}</td>
                             <td style="padding:8px; border:1px solid #eee;">${email}</td>
@@ -339,6 +340,7 @@
                     <table>
                         <thead>
                             <tr style="background:#f0f0f0;">
+                                <th style="padding:8px; border:1px solid #eee; width:100px;">Processo</th>
                                 <th style="padding:8px; border:1px solid #eee; width:150px;">CNPJ</th>
                                 <th style="padding:8px; border:1px solid #eee;">Nome da empresa</th>
                                 <th style="padding:8px; border:1px solid #eee;">E-mail da empresa</th>
@@ -347,12 +349,13 @@
                         <tbody>
                             {% for r in resultados %}
                                 <tr>
+                                    <td style="padding:8px; border:1px solid #eee;">{{ r.processo }}</td>
                                     <td style="padding:8px; border:1px solid #eee;">{{ r.cnpj }}</td>
                                     <td style="padding:8px; border:1px solid #eee;">{{ r.nome }}</td>
                                     <td style="padding:8px; border:1px solid #eee;">{% if r.email and r.email != '-' %}{{ r.email }}{% else %}Sem e-mail{% endif %}</td>
                                 </tr>
                             {% empty %}
-                                <tr><td colspan="3" style="text-align:center; color:#888; padding:16px;">Nenhum resultado para exibir.</td></tr>
+                                <tr><td colspan="4" style="text-align:center; color:#888; padding:16px;">Nenhum resultado para exibir.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -386,7 +389,8 @@
                     <table>
                         <thead>
                             <tr style="background:#f0f0f0;">
-                                <th style="padding:8px; border:1px solid #eee; width:150px;">Data</th>
+                                <th style="padding:8px; border:1px solid #eee; width:100px;">Data</th>
+                                <th style="padding:8px; border:1px solid #eee; width:160px;">Processo</th>
                                 <th style="padding:8px; border:1px solid #eee; width:150px;">CNPJ</th>
                                 <th style="padding:8px; border:1px solid #eee;">Nome</th>
                                 <th style="padding:8px; border:1px solid #eee;">E-mail</th>
@@ -397,10 +401,11 @@
                                 {% for h in historico %}
                                     {% for item in h.resultado %}
                                         <tr>
-                                            <td style="padding:8px; border:1px solid #eee;">{{ h.data|date:"d/m/Y H:i" }}</td>
+                                            <td style="padding:8px; border:1px solid #eee;">{{ h.data|date:"d/m/y" }}</td>
+                                            <td style="padding:8px; border:1px solid #eee;">{{ item.processo }}</td>
                                             <td style="padding:8px; border:1px solid #eee;">{{ item.cnpj }}</td>
                                             <td style="padding:8px; border:1px solid #eee;">{{ item.nome }}</td>
-                                            <td style="padding:8px; border:1px solid #eee;">{{ item.email }}</td>
+                                            <td style="padding:8px; border:1px solid #eee;">{% if item.email and item.email != '-' %}{{ item.email }}{% else %}Sem e-mail{% endif %}</td>
                                         </tr>
                                     {% endfor %}
                                 {% endfor %}

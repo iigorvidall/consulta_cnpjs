@@ -96,7 +96,7 @@ def export_historico_csv(request):
 	for h in historico:
 		for r in h.resultado:
 			r_cpy = r.copy()
-			r_cpy['data'] = h.data.strftime('%d/%m/%Y %H:%M')
+			r_cpy['data'] = h.data.strftime('%d/%m/%y')
 			resultados.append(r_cpy)
 	csv_data = exportar_csv(resultados, include_data=True)
 	response = HttpResponse(csv_data, content_type='text/csv')
@@ -110,7 +110,7 @@ def export_historico_xlsx(request):
 	for h in historico:
 		for r in h.resultado:
 			r_cpy = r.copy()
-			r_cpy['data'] = h.data.strftime('%d/%m/%Y %H:%M')
+			r_cpy['data'] = h.data.strftime('%d/%m/%y')
 			resultados.append(r_cpy)
 	xlsx_data = exportar_xlsx(resultados, include_data=True)
 	response = HttpResponse(xlsx_data, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -137,19 +137,33 @@ class ConsultaCNPJView(APIView):
 
 # --------- Abordagem simples com polling (sem Celery) ---------
 
-def _init_job_session(request, cnpjs_list):
-	# Normaliza e remove duplicados preservando a ordem
-	clean_list = [clean_cnpj(c) for c in cnpjs_list if clean_cnpj(c)]
-	clean_list = list(dict.fromkeys(clean_list))
+def _init_job_session(request, items):
+	# items pode ser lista de strings (cnpj) ou dicts {cnpj, processo}
+	normalized = []
+	seen = set()  # dedup apenas pares idênticos (cnpj, processo)
+	for it in items:
+		if isinstance(it, dict):
+			c = clean_cnpj(it.get('cnpj', ''))
+			p = (it.get('processo') or None)
+			key = (c, (p or '')) if c else None
+			if c and key not in seen:
+				normalized.append({'cnpj': c, 'processo': p})
+				seen.add(key)
+		else:
+			c = clean_cnpj(it)
+			key = (c, '') if c else None
+			if c and key not in seen:
+				normalized.append({'cnpj': c, 'processo': None})
+				seen.add(key)
 	job = {
-		'queue': clean_list,
+		'queue': normalized,
 		'processed': 0,
-		'total': len(clean_list),
+		'total': len(normalized),
 		'results': [],
 		'status': 'running',  # running | paused | cancelled
 		'tipo': None,
 		'arquivo_nome': None,
-		'cnpjs_str': ','.join(clean_list),
+		'cnpjs_str': ','.join([i['cnpj'] for i in normalized]),
 	}
 	request.session['job'] = job
 	request.session.modified = True
@@ -162,7 +176,7 @@ def jobs_start(request):
 	"""Inicia um job a partir de CSV/XLSX ou lista manual de CNPJs, salvando na sessão."""
 	# Use o content-type para decidir como ler o corpo, evitando RawPostDataException
 	content_type = (request.META.get('CONTENT_TYPE') or '').lower()
-	cnpjs_list = []
+	items = []
 
 	if content_type.startswith('application/json'):
 		# Não toque em request.POST/FILES aqui
@@ -172,8 +186,8 @@ def jobs_start(request):
 			payload = {}
 		cnpjs_raw = (payload.get('cnpjs') or '').strip()
 		if cnpjs_raw:
-			cnpjs_list = [c.strip() for c in cnpjs_raw.split(',') if c.strip()]
-		job = _init_job_session(request, cnpjs_list)
+			items = [c.strip() for c in cnpjs_raw.split(',') if c.strip()]
+		job = _init_job_session(request, items)
 		job['tipo'] = 'manual'
 		request.session['job'] = job
 		request.session.modified = True
@@ -182,8 +196,8 @@ def jobs_start(request):
 		# multipart/form-data ou x-www-form-urlencoded
 		cnpjs_raw = (request.POST.get('cnpjs') or '').strip()
 		if cnpjs_raw:
-			cnpjs_list = [c.strip() for c in cnpjs_raw.split(',') if c.strip()]
-		if not cnpjs_list:
+			items = [c.strip() for c in cnpjs_raw.split(',') if c.strip()]
+		if not items:
 			up_file = request.FILES.get('csv_file')
 			if up_file:
 				fname = (up_file.name or '').lower()
@@ -196,17 +210,24 @@ def jobs_start(request):
 						header_row = next(ws.iter_rows(min_row=1, max_row=1))
 						headers = [str(c.value).strip().lower() if c.value else '' for c in header_row]
 						keys = ['cnpj', 'cnpj/cpf', 'cnpj_cpf']
+						pkeys = ['processo', 'número do processo', 'numero do processo']
 						cnpj_idx = None
+						proc_idx = None
 						for idx, h in enumerate(headers):
 							if any(k in h for k in keys):
 								cnpj_idx = idx
+								break
+						for idx, h in enumerate(headers):
+							if any(k in h for k in pkeys):
+								proc_idx = idx
 								break
 						if cnpj_idx is not None:
 							for row in ws.iter_rows(min_row=2):
 								val = row[cnpj_idx].value if cnpj_idx < len(row) else ''
 								cnpj_val = clean_cnpj(str(val) if val is not None else '')
+								proc_val = (str(row[proc_idx].value).strip() if (proc_idx is not None and row[proc_idx].value) else None)
 								if len(cnpj_val) == 14:
-									cnpjs_list.append(cnpj_val)
+									items.append({'cnpj': cnpj_val, 'processo': proc_val})
 						else:
 							# Fallback: varre todas as células procurando padrões de CNPJ
 							pattern = re.compile(r"\d{2}\D?\d{3}\D?\d{3}\D?\d{4}\D?\d{2}")
@@ -218,7 +239,7 @@ def jobs_start(request):
 									for m in pattern.findall(text):
 										digits = clean_cnpj(m)
 										if len(digits) == 14:
-											cnpjs_list.append(digits)
+											items.append({'cnpj': digits, 'processo': None})
 					elif fname.endswith('.csv'):
 						# Extrai CNPJs do CSV com fallback de encoding
 						raw = up_file.read()
@@ -233,16 +254,23 @@ def jobs_start(request):
 						try:
 							reader = _csv.DictReader(sio)
 							keys = ['cnpj', 'CNPJ', 'CNPJ/CPF', 'cnpj_cpf']
+							pkeys = ['processo', 'Processo', 'número do processo', 'numero do processo']
 							found_by_header = False
 							for row in reader:
 								matched_this_row = False
+								proc_val = None
 								for key in row:
 									if key is None:
 										continue
 									if any(k.lower() in key.lower() for k in keys):
 										cnpj_val = clean_cnpj(row[key])
 										if len(cnpj_val) == 14:
-											cnpjs_list.append(cnpj_val)
+											# captura processo se existir
+											for k2 in row:
+												if any(pk.lower() in k2.lower() for pk in pkeys):
+													proc_val = (row[k2] or '').strip()
+													break
+											items.append({'cnpj': cnpj_val, 'processo': proc_val})
 											matched_this_row = True
 											found_by_header = True
 								if not matched_this_row:
@@ -254,7 +282,7 @@ def jobs_start(request):
 										for m in pattern.findall(str(v)):
 											digits = clean_cnpj(m)
 											if len(digits) == 14:
-												cnpjs_list.append(digits)
+												items.append({'cnpj': digits, 'processo': None})
 						except Exception:
 							# Se DictReader não funcionar bem (csv caótico), usa csv.reader
 							sio.seek(0)
@@ -265,14 +293,14 @@ def jobs_start(request):
 									for m in pattern.findall(str(field)):
 										digits = clean_cnpj(m)
 										if len(digits) == 14:
-											cnpjs_list.append(digits)
+											items.append({'cnpj': digits, 'processo': None})
 					else:
 						return JsonResponse({'detail': 'Tipo de arquivo não suportado. Envie CSV ou XLSX.'}, status=400)
 				except Exception as e:
 					return JsonResponse({'detail': f'Erro ao ler arquivo: {str(e)}'}, status=400)
-		if not cnpjs_list:
+		if not items:
 			return JsonResponse({'detail': 'Informe cnpjs (JSON/POST) ou envie csv_file.'}, status=400)
-		job = _init_job_session(request, cnpjs_list)
+		job = _init_job_session(request, items)
 		# Define metadados do job conforme origem
 		if request.FILES.get('csv_file'):
 			job['tipo'] = 'upload'
@@ -305,11 +333,15 @@ def jobs_step(request):
 	if processed >= total or not queue:
 		return JsonResponse({'status': 'done', 'processed': processed, 'total': total, 'item': None})
 	time.sleep(DELAY_SECONDS)
-	cnpj = queue.pop(0)
+	item = queue.pop(0)
+	cnpj = item.get('cnpj') if isinstance(item, dict) else item
 	try:
 		resultado = consultar_cnpj_api(cnpj)
 	except Exception as e:
 		resultado = {'cnpj': cnpj, 'nome': '-', 'email': f'Erro: {str(e)}'}
+	# anexa processo se existir
+	if isinstance(item, dict) and item.get('processo'):
+		resultado['processo'] = item['processo']
 	results.append(resultado)
 	processed += 1
 	job.update({'queue': queue, 'processed': processed, 'total': total, 'results': results})
