@@ -43,3 +43,15 @@ class CNPJAClient:
             detail = resp.text[:500]
             raise CNPJAClientError(f"Erro {resp.status_code} ao consultar CNPJ {cnpj}: {detail}")
         return resp.json()
+
+    def get_credits(self, timeout: int = 15) -> Dict[str, Any]:
+        """Obtém os créditos disponíveis na conta do CNPJÁ PRO.
+
+        Retorna o JSON original da API. Levanta CNPJAClientError em caso de erro.
+        """
+        url = f"{self.base_url}/credit"
+        resp = requests.get(url, headers=self._headers(), timeout=timeout)
+        if resp.status_code != 200:
+            detail = resp.text[:500]
+            raise CNPJAClientError(f"Erro {resp.status_code} ao obter créditos: {detail}")
+        return resp.json()

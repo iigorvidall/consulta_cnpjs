@@ -14,6 +14,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 import json
 import re
+from django.core.cache import cache
+from django.views.decorators.http import require_GET
 
 def status_retry(request):
 	status = request.session.get('status_retry', '')
@@ -116,6 +118,35 @@ def export_historico_xlsx(request):
 	response = HttpResponse(xlsx_data, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 	response['Content-Disposition'] = 'attachment; filename="historico.xlsx"'
 	return response
+
+
+@require_GET
+def api_creditos(request):
+	"""Retorna créditos CNPJÁ com cache de 24h. Force refresh com ?refresh=1."""
+	cache_key = 'cnpja_creditos_v1'
+	refresh = request.GET.get('refresh') == '1'
+	data = cache.get(cache_key)
+	if data is None or refresh:
+		try:
+			client = CNPJAClient()
+			data = client.get_credits(timeout=15)
+			# TTL de 24h = 86400s
+			cache.set(cache_key, data, timeout=86400)
+		except Exception as e:
+			if data is None:
+				return JsonResponse({'detail': f'Não foi possível obter créditos: {str(e)}'}, status=502)
+			# Se já existe cache, retorna cache mesmo em erro
+	return JsonResponse(data, safe=False)
+
+
+def _refresh_creditos_cache_silently():
+	"""Atualiza o cache de créditos sem falhar a requisição chamadora."""
+	try:
+		client = CNPJAClient()
+		data = client.get_credits(timeout=15)
+		cache.set('cnpja_creditos_v1', data, timeout=86400)
+	except Exception:
+		pass
 
 
 class ConsultaCNPJView(APIView):
@@ -373,6 +404,8 @@ def jobs_finalize(request):
 		# limpar job
 		request.session.pop('job', None)
 		request.session.modified = True
+		# tenta atualizar créditos em background (sem bloquear resposta)
+		_refresh_creditos_cache_silently()
 		return JsonResponse({'status': 'ok'})
 	except Exception as e:
 		return JsonResponse({'detail': f'Erro ao salvar histórico: {str(e)}'}, status=500)

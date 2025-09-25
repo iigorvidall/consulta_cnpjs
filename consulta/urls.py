@@ -8,6 +8,7 @@ urlpatterns = [
     path('export/historico/csv/', views.export_historico_csv, name='export_historico_csv'),
     path('export/historico/xlsx/', views.export_historico_xlsx, name='export_historico_xlsx'),
     path('status-retry/', views.status_retry, name='status_retry'),
+    path('api/creditos/', views.api_creditos, name='api_creditos'),
     path('cnpj/<str:cnpj>/', views.ConsultaCNPJView.as_view(), name='consulta_cnpj'),
     # Streaming simples via polling
     path('jobs/start/', views.jobs_start, name='jobs_start'),

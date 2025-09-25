@@ -122,3 +122,11 @@ REST_FRAMEWORK = {
         'user': '100/minute',
     },
 }
+
+# Cache (usado para créditos CNPJÁ). Em produção, configure um backend persistente (Redis/Memcached).
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'consulta-cnpj-cache',
+    }
+}

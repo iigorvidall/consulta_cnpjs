@@ -274,6 +274,8 @@
                             document.getElementById('consultaForm').appendChild(doneEl);
                         }
                             doneEl.textContent = 'Processamento concluído e salvo no histórico.';
+                            // Atualiza créditos após finalizar o lote
+                            try { await loadCredits(true); } catch (e2) {}
                         }
                     }
                 } catch (e) {
@@ -317,6 +319,10 @@
                 statusDiv.style.display = '';
             }
             </script>
+            <!-- Créditos: discreto, no rodapé do card de consulta -->
+            <div id="credits-inline" style="margin-top:10px; font-size:12px; color:#666; text-align:left;">
+                Créditos: <span id="credits-inline-content">Carregando...</span>
+            </div>
         </div>
         <div class="table-card">
             <div style="display:flex; gap:12px; margin-bottom:1rem; align-items:center;">
@@ -417,6 +423,40 @@
                 </div>
             </div>
             <script>
+            // Créditos CNPJÁ (mostra apenas o total: transient + perpetual). Sem botão, discreto no card.
+            async function loadCredits(forceRefresh = false) {
+                const content = document.getElementById('credits-inline-content');
+                if (!content) return;
+                try {
+                    const url = forceRefresh ? '/api/creditos/?refresh=1' : '/api/creditos/';
+                    const resp = await fetch(url);
+                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                    const data = await resp.json();
+                    if (data && typeof data === 'object') {
+                        // Preferimos os campos "transient" e "perpetual"; caímos para outros se necessário
+                        const transientRaw = data.transient ?? data.monthlyCredits ?? data.monthly ?? data.month ?? data.mensal;
+                        const perpetualRaw = data.perpetual ?? data.permanentCredits ?? data.permanent ?? data.perm ?? data.permanentes;
+                        const t1 = transientRaw != null ? Number(transientRaw) : null;
+                        const t2 = perpetualRaw != null ? Number(perpetualRaw) : null;
+                        if (typeof t1 === 'number' && !Number.isNaN(t1) && typeof t2 === 'number' && !Number.isNaN(t2)) {
+                            content.textContent = String(t1 + t2);
+                        } else if (typeof data.total === 'number') {
+                            content.textContent = String(data.total);
+                        } else if (typeof data.totalCredits === 'number') {
+                            content.textContent = String(data.totalCredits);
+                        } else {
+                            content.textContent = '—';
+                        }
+                    } else {
+                        content.textContent = '—';
+                    }
+                } catch (e) {
+                    const content2 = document.getElementById('credits-inline-content');
+                    if (content2) content2.textContent = '—';
+                }
+            }
+            // Carrega na inicialização (usa cache diário)
+            window.addEventListener('DOMContentLoaded', () => { loadCredits(false); });
             // Alternância de abas Resultado/Histórico
             const btnResultado = document.getElementById('btn-resultado');
             const btnHistorico = document.getElementById('btn-historico');
