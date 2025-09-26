@@ -161,9 +161,18 @@
                 </form>
             </div>
             <div id="tab-resultado">
-                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; gap:12px;">
                     <h2 style="font-size:1.1rem; margin:0;">Resultados</h2>
-                    <div>
+                    <div style="display:flex; gap:8px; align-items:center; margin-left:auto;">
+                        <label for="res-search-field" style="margin:0; font-weight:normal; color:#555;">Filtrar por</label>
+                        <select id="res-search-field" style="padding:6px 8px; border:1px solid #ccc; border-radius:6px;">
+                            <option value="processo">Processo</option>
+                            <option value="cnpj" selected>CNPJ</option>
+                            <option value="nome">Nome</option>
+                            <option value="email">E-mail</option>
+                        </select>
+                        <input id="res-search-input" type="text" placeholder="Digite para filtrar..." style="padding:6px 10px; border:1px solid #ccc; border-radius:6px; min-width:220px;" />
+                        <span id="res-count" style="font-size:12px; color:#555; margin-left:6px;">—</span>
                         <a href="{% url 'export_resultado_csv' %}" class="export-btn">Exportar CSV</a>
                         <a href="{% url 'export_resultado_xlsx' %}" class="export-btn">Exportar XLSX</a>
                     </div>
@@ -204,9 +213,18 @@
                 </div>
             </div>
             <div id="tab-historico" style="display:none;">
-                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; gap:12px;">
                     <h2 style="font-size:1.1rem; margin:0;">Histórico de Consultas</h2>
-                    <div>
+                    <div style="display:flex; gap:8px; align-items:center; margin-left:auto;">
+                        <label for="his-search-field" style="margin:0; font-weight:normal; color:#555;">Filtrar por</label>
+                        <select id="his-search-field" style="padding:6px 8px; border:1px solid #ccc; border-radius:6px;">
+                            <option value="processo">Processo</option>
+                            <option value="cnpj" selected>CNPJ</option>
+                            <option value="nome">Nome</option>
+                            <option value="email">E-mail</option>
+                        </select>
+                        <input id="his-search-input" type="text" placeholder="Digite para filtrar..." style="padding:6px 10px; border:1px solid #ccc; border-radius:6px; min-width:220px;" />
+                        <span id="his-count" style="font-size:12px; color:#555; margin-left:6px;">—</span>
                         <a href="{% url 'export_historico_csv' %}" class="export-btn">Exportar CSV</a>
                         <a href="{% url 'export_historico_xlsx' %}" class="export-btn">Exportar XLSX</a>
                     </div>
@@ -306,4 +324,3 @@
     <script src="{% static 'js/home.js' %}"></script>
 </body>
 </html>
-    if (histTbody) histTbody.addEventListener('click', delegateHandler);
