@@ -16,11 +16,21 @@ import json
 import re
 from django.core.cache import cache
 from django.views.decorators.http import require_GET
+from django.contrib import messages
+from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout, get_user_model
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import redirect
+from django.utils import timezone
+from .forms import ConsultaForm  # existing
+from .forms import LoginForm, SignupForm
+from rest_framework.permissions import IsAuthenticated
 
+@login_required(login_url='login')
 def status_retry(request):
 	status = request.session.get('status_retry', '')
 	return JsonResponse({'status': status})
 
+@login_required(login_url='login')
 def home(request):
 	error_msg = None
 	resultados = []
@@ -60,13 +70,14 @@ def home(request):
 				error_msg = 'O arquivo enviado deve ser um CSV ou XLSX.'
 		# Limpa status de retry ao fim do processamento
 		request.session['status_retry'] = ''
-		# Salvar histórico se houver resultados
+		# Salvar histórico se houver resultados (ou erro); sempre como lista
 		if (tipo and (resultados or error_msg)):
+			payload_result = resultados if resultados else [{'cnpj': '-', 'nome': '-', 'email': f'Erro: {error_msg}'}]
 			ConsultaHistorico.objects.create(
 				tipo=tipo,
 				cnpjs=cnpjs_registro,
 				arquivo_nome=csv_file.name if tipo == 'upload' and csv_file else None,
-				resultado=resultados if resultados else {'erro': error_msg}
+				resultado=payload_result
 			)
 		# Salvar resultados atuais na sessão para exportação
 		request.session['ultimos_resultados'] = resultados
@@ -76,6 +87,7 @@ def home(request):
 	return render(request, 'consulta/home.html', context)
 
 
+@login_required(login_url='login')
 def export_resultado_csv(request):
 	resultados = request.session.get('ultimos_resultados', [])
 	csv_data = exportar_csv(resultados)
@@ -84,6 +96,7 @@ def export_resultado_csv(request):
 	return response
 
 
+@login_required(login_url='login')
 def export_resultado_xlsx(request):
 	resultados = request.session.get('ultimos_resultados', [])
 	xlsx_data = exportar_xlsx(resultados)
@@ -92,6 +105,7 @@ def export_resultado_xlsx(request):
 	return response
 
 
+@login_required(login_url='login')
 def export_historico_csv(request):
 	historico = ConsultaHistorico.objects.order_by('-data')
 	resultados = []
@@ -106,6 +120,7 @@ def export_historico_csv(request):
 	return response
 
 
+@login_required(login_url='login')
 def export_historico_xlsx(request):
 	historico = ConsultaHistorico.objects.order_by('-data')
 	resultados = []
@@ -121,6 +136,7 @@ def export_historico_xlsx(request):
 
 
 @require_GET
+@login_required(login_url='login')
 def api_creditos(request):
 	"""Retorna créditos CNPJÁ com cache de 24h. Force refresh com ?refresh=1."""
 	cache_key = 'cnpja_creditos_v1'
@@ -149,8 +165,42 @@ def _refresh_creditos_cache_silently():
 		pass
 
 
+
+@require_GET
+@login_required(login_url='login')
+def api_detalhes(request, cnpj: str):
+    """Retorna o JSON completo salvo para um CNPJ (prioriza sessão atual, depois histórico do banco)."""
+    def _digits(s: str) -> str:
+        return ''.join(ch for ch in (s or '') if ch.isdigit())
+
+    target = _digits(cnpj)
+    if len(target) != 14:
+        return JsonResponse({'detail': 'CNPJ inválido'}, status=400)
+
+    # 1) Prioriza resultados do job na sessão (ainda não persistidos)
+    job = request.session.get('job') or {}
+    for item in (job.get('results') or []):
+        if _digits(item.get('cnpj')) == target:
+            det = item.get('detalhes')
+            if det is not None:
+                return JsonResponse(det, safe=False)
+
+    # 2) Procura no histórico do banco (mais recente primeiro)
+    qs = ConsultaHistorico.objects.order_by('-data')[:200]
+    for h in qs:
+        for r in (h.resultado or []):
+            try:
+                if _digits(r.get('cnpj')) == target and r.get('detalhes') is not None:
+                    return JsonResponse(r.get('detalhes'), safe=False)
+            except Exception:
+                continue
+
+    return JsonResponse({'detail': 'Detalhes não encontrados para este CNPJ.'}, status=404)
+
+
 class ConsultaCNPJView(APIView):
 	"""GET /cnpj/<cnpj>/ retorna o JSON completo da API PRO do CNPJÁ."""
+	permission_classes = [IsAuthenticated]
 	def get(self, request, cnpj: str):
 		s = CNPJQuerySerializer(data={'cnpj': cnpj})
 		if not s.is_valid():
@@ -203,6 +253,7 @@ def _init_job_session(request, items):
 
 @require_http_methods(["POST"])
 @csrf_exempt
+@login_required(login_url='login')
 def jobs_start(request):
 	"""Inicia um job a partir de CSV/XLSX ou lista manual de CNPJs, salvando na sessão."""
 	# Use o content-type para decidir como ler o corpo, evitando RawPostDataException
@@ -345,6 +396,7 @@ def jobs_start(request):
 
 @require_http_methods(["POST"])
 @csrf_exempt
+@login_required(login_url='login')
 def jobs_step(request):
 	"""Processa um item da fila do job na sessão e retorna o resultado parcial."""
 	import time
@@ -384,6 +436,7 @@ def jobs_step(request):
 
 @require_http_methods(["POST"])
 @csrf_exempt
+@login_required(login_url='login')
 def jobs_finalize(request):
 	"""Persiste os resultados do job no histórico e finaliza, limpando o job da sessão."""
 	job = request.session.get('job')
@@ -413,6 +466,7 @@ def jobs_finalize(request):
 
 @require_http_methods(["POST"])
 @csrf_exempt
+@login_required(login_url='login')
 def jobs_pause(request):
 	job = request.session.get('job')
 	if not job:
@@ -425,6 +479,7 @@ def jobs_pause(request):
 
 @require_http_methods(["POST"])
 @csrf_exempt
+@login_required(login_url='login')
 def jobs_resume(request):
 	job = request.session.get('job')
 	if not job:
@@ -437,6 +492,7 @@ def jobs_resume(request):
 
 @require_http_methods(["POST"])
 @csrf_exempt
+@login_required(login_url='login')
 def jobs_cancel(request):
 	job = request.session.get('job')
 	if not job:
@@ -447,3 +503,90 @@ def jobs_cancel(request):
 	request.session['job'] = job
 	request.session.modified = True
 	return JsonResponse({'status': 'cancelled'})
+
+
+# -------------------- Autenticação --------------------
+
+def _client_ip(request):
+	xff = request.META.get('HTTP_X_FORWARDED_FOR')
+	if xff:
+		return xff.split(',')[0].strip()
+	return request.META.get('REMOTE_ADDR') or '0.0.0.0'
+
+def _is_locked(identifier: str) -> int:
+	# retorna segundos restantes de bloqueio ou 0
+	key = f"lock:{identifier}"
+	ttl = cache.ttl(key) if hasattr(cache, 'ttl') else None
+	if cache.get(key):
+		return int(ttl) if isinstance(ttl, (int, float)) and ttl and ttl > 0 else 1
+	return 0
+
+def _register_fail(identifier: str):
+	max_attempts = int(getattr(__import__('django.conf').conf.settings, 'LOGIN_MAX_ATTEMPTS', 5))
+	lock_seconds = int(getattr(__import__('django.conf').conf.settings, 'LOGIN_LOCKOUT_SECONDS', 900))
+	count_key = f"attempts:{identifier}"
+	count = cache.get(count_key, 0) + 1
+	cache.set(count_key, count, timeout=lock_seconds)
+	if count >= max_attempts:
+		cache.set(f"lock:{identifier}", True, timeout=lock_seconds)
+
+def _reset_attempts(identifier: str):
+	cache.delete_many([f"attempts:{identifier}", f"lock:{identifier}"])
+
+
+def login_view(request):
+	if request.user.is_authenticated:
+		return redirect('home')
+	form = LoginForm(request.POST or None)
+	error = None
+	ip = _client_ip(request)
+	# chaves de lock: por IP e por identificador
+	id_input = (request.POST.get('username') or '').strip().lower()
+	locked_ip = _is_locked(f"ip:{ip}")
+	locked_id = _is_locked(f"id:{id_input}") if id_input else 0
+	if request.method == 'POST':
+		if locked_ip or locked_id:
+			messages.error(request, 'Muitas tentativas. Tente novamente mais tarde.')
+		elif form.is_valid():
+			ident = form.cleaned_data['username']
+			password = form.cleaned_data['password']
+			# aceita e-mail ou usuário
+			User = get_user_model()
+			username = ident
+			if '@' in ident:
+				try:
+					user_obj = User.objects.get(email__iexact=ident)
+					username = user_obj.get_username()
+				except User.DoesNotExist:
+					pass
+			user = authenticate(request, username=username, password=password)
+			if user is not None:
+				_reset_attempts(f"ip:{ip}")
+				_reset_attempts(f"id:{id_input}")
+				auth_login(request, user)
+				return redirect('home')
+			else:
+				_register_fail(f"ip:{ip}")
+				if id_input:
+					_register_fail(f"id:{id_input}")
+				messages.error(request, 'Credenciais inválidas.')
+		else:
+			messages.error(request, 'Preencha os campos corretamente.')
+	return render(request, 'auth/login.html', {'form': form})
+
+
+def logout_view(request):
+	auth_logout(request)
+	return redirect('login')
+
+
+def signup_view(request):
+	if request.user.is_authenticated:
+		return redirect('home')
+	form = SignupForm(request.POST or None)
+	if request.method == 'POST' and form.is_valid():
+		user = form.save()
+		# login automático após cadastro
+		auth_login(request, user)
+		return redirect('home')
+	return render(request, 'auth/signup.html', {'form': form})

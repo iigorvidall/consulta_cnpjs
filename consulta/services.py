@@ -57,7 +57,8 @@ def consultar_cnpj_api(cnpj, retry_count=3, retry_wait=20, on_retry=None):
             return {
                 'cnpj': format_cnpj(clean),
                 'nome': nome,
-                'email': email
+                'email': email,
+                'detalhes': data
             }
         except CNPJAClientError as e:
             msg = str(e)
@@ -70,7 +71,8 @@ def consultar_cnpj_api(cnpj, retry_count=3, retry_wait=20, on_retry=None):
             return {
                 'cnpj': format_cnpj(clean),
                 'nome': '-',
-                'email': f'Erro API PRO: {msg[:200]}'
+                'email': f'Erro API PRO: {msg[:200]}',
+                'detalhes': None
             }
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
             if on_retry:
@@ -81,12 +83,14 @@ def consultar_cnpj_api(cnpj, retry_count=3, retry_wait=20, on_retry=None):
             return {
                 'cnpj': format_cnpj(clean),
                 'nome': '-',
-                'email': f'Erro inesperado: {str(e)[:200]}'
+                'email': f'Erro inesperado: {str(e)[:200]}',
+                'detalhes': None
             }
     return {
         'cnpj': format_cnpj(clean),
         'nome': '-',
-        'email': 'Limite de tentativas excedido devido a rate limit (429).'
+        'email': 'Limite de tentativas excedido devido a rate limit (429).',
+        'detalhes': None
     }
 
 def processar_csv(file, logger=None, on_retry=None):
@@ -116,7 +120,7 @@ def processar_csv(file, logger=None, on_retry=None):
             except Exception as e:
                 if logger:
                     logger.error(f'Erro ao consultar CNPJ {cnpj_val}: {e}')
-                resultados.append({'processo': proc_val, 'cnpj': format_cnpj(cnpj_val), 'nome': '-', 'email': f'Erro: {str(e)}'})
+                resultados.append({'processo': proc_val, 'cnpj': format_cnpj(cnpj_val), 'nome': '-', 'email': f'Erro: {str(e)}', 'detalhes': None})
             time.sleep(DELAY_SECONDS)
     return resultados
 
@@ -145,7 +149,7 @@ def processar_xlsx(file, logger=None, on_retry=None):
                 resultado['processo'] = proc_val
                 resultados.append(resultado)
             except Exception as e:
-                resultados.append({'processo': proc_val, 'cnpj': format_cnpj(cnpj_val), 'nome': '-', 'email': f'Erro: {str(e)}'})
+                resultados.append({'processo': proc_val, 'cnpj': format_cnpj(cnpj_val), 'nome': '-', 'email': f'Erro: {str(e)}', 'detalhes': None})
             time.sleep(DELAY_SECONDS)
     return resultados
 

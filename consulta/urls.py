@@ -2,6 +2,10 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    # Auth
+    path('login/', views.login_view, name='login'),
+    path('logout/', views.logout_view, name='logout'),
+    path('signup/', views.signup_view, name='signup'),
     path('', views.home, name='home'),
     path('export/resultado/csv/', views.export_resultado_csv, name='export_resultado_csv'),
     path('export/resultado/xlsx/', views.export_resultado_xlsx, name='export_resultado_xlsx'),
@@ -9,6 +13,7 @@ urlpatterns = [
     path('export/historico/xlsx/', views.export_historico_xlsx, name='export_historico_xlsx'),
     path('status-retry/', views.status_retry, name='status_retry'),
     path('api/creditos/', views.api_creditos, name='api_creditos'),
+    path('api/detalhes/<str:cnpj>/', views.api_detalhes, name='api_detalhes'),
     path('cnpj/<str:cnpj>/', views.ConsultaCNPJView.as_view(), name='consulta_cnpj'),
     # Streaming simples via polling
     path('jobs/start/', views.jobs_start, name='jobs_start'),

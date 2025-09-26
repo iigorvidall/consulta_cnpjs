@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Consulta CNPJ/CPF</title>
+    {% load static %}
     <style>
     .tab-btn-form { background:#eee; color:#222; border-radius:5px 5px 0 0; border:none; padding:0.5rem 1.2rem; font-weight:bold; cursor:pointer; }
     .tab-btn-form.active { background:#1976d2; color:#fff; }
@@ -99,9 +100,18 @@
             justify-content: center;
             min-height: 100vh;
         }
+        .site-header { display:flex; justify-content:center; align-items:center; padding-top: 20px; }
+        .site-header .logo-img { width: 237px; height: 62px; object-fit: cover; border-radius: 8px; }
     </style>
 </head>
 <body>
+    <div class="site-header" style="gap:16px;">
+        <img src="{% static 'img/Logo.png' %}" alt="Logo IGNEA" class="logo-img" />
+        <form method="post" action="{% url 'logout' %}" style="margin-left:16px;">
+            {% csrf_token %}
+            <button type="submit" style="padding:6px 12px; background:#444; color:#fff; border:none; border-radius:6px; font-size:12px; cursor:pointer;">Sair</button>
+        </form>
+    </div>
     <div class="main-container">
     <div class="center-top">
         <div class="form-card">
@@ -243,11 +253,21 @@
                         const r = stepData.item;
                         const tr = document.createElement('tr');
                         const email = (!r.email || r.email === '-') ? 'Sem e-mail' : r.email;
+                        const cnpjVal = r.cnpj || '-';
                         tr.innerHTML = `
                             <td style="padding:8px; border:1px solid #eee;">${r.processo || ''}</td>
-                            <td style="padding:8px; border:1px solid #eee;">${r.cnpj || '-'}</td>
+                            <td style="padding:8px; border:1px solid #eee;">${cnpjVal}</td>
                             <td style="padding:8px; border:1px solid #eee;">${r.nome || '-'}</td>
                             <td style="padding:8px; border:1px solid #eee;">${email}</td>
+                            <td style="padding:8px; border:1px solid #eee; text-align:center;">
+                                <button class=\"btn-icon btn-details\" data-cnpj=\"${cnpjVal}\" title=\"Ver detalhes\"> 
+                                    <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#888\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\">
+                                        <circle cx=\"12\" cy=\"12\" r=\"10\"></circle>
+                                        <line x1=\"12\" y1=\"16\" x2=\"12\" y2=\"12\"></line>
+                                        <line x1=\"12\" y1=\"8\" x2=\"12.01\" y2=\"8\"></line>
+                                    </svg>
+                                </button>
+                            </td>
                         `;
                         tbody.appendChild(tr);
                         progressEl.textContent = `Progresso: ${processed}/${total}`;
@@ -350,6 +370,7 @@
                                 <th style="padding:8px; border:1px solid #eee; width:150px;">CNPJ</th>
                                 <th style="padding:8px; border:1px solid #eee;">Nome da empresa</th>
                                 <th style="padding:8px; border:1px solid #eee;">E-mail da empresa</th>
+                                <th style="padding:8px; border:1px solid #eee; width:72px; text-align:center;">Detalhes</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -359,9 +380,18 @@
                                     <td style="padding:8px; border:1px solid #eee;">{{ r.cnpj }}</td>
                                     <td style="padding:8px; border:1px solid #eee;">{{ r.nome }}</td>
                                     <td style="padding:8px; border:1px solid #eee;">{% if r.email and r.email != '-' %}{{ r.email }}{% else %}Sem e-mail{% endif %}</td>
+                                    <td style="padding:8px; border:1px solid #eee; text-align:center;">
+                                        <button class="btn-icon btn-details" data-cnpj="{{ r.cnpj }}" title="Ver detalhes">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <circle cx="12" cy="12" r="10"></circle>
+                                                <line x1="12" y1="16" x2="12" y2="12"></line>
+                                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                            </svg>
+                                        </button>
+                                    </td>
                                 </tr>
                             {% empty %}
-                                <tr><td colspan="4" style="text-align:center; color:#888; padding:16px;">Nenhum resultado para exibir.</td></tr>
+                                <tr><td colspan="5" style="text-align:center; color:#888; padding:16px;">Nenhum resultado para exibir.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -400,6 +430,7 @@
                                 <th style="padding:8px; border:1px solid #eee; width:150px;">CNPJ</th>
                                 <th style="padding:8px; border:1px solid #eee;">Nome</th>
                                 <th style="padding:8px; border:1px solid #eee;">E-mail</th>
+                                <th style="padding:8px; border:1px solid #eee; width:72px; text-align:center;">Detalhes</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -412,11 +443,20 @@
                                             <td style="padding:8px; border:1px solid #eee;">{{ item.cnpj }}</td>
                                             <td style="padding:8px; border:1px solid #eee;">{{ item.nome }}</td>
                                             <td style="padding:8px; border:1px solid #eee;">{% if item.email and item.email != '-' %}{{ item.email }}{% else %}Sem e-mail{% endif %}</td>
+                                            <td style="padding:8px; border:1px solid #eee; text-align:center;">
+                                                <button class="btn-icon btn-details" data-cnpj="{{ item.cnpj }}" title="Ver detalhes">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <circle cx="12" cy="12" r="10"></circle>
+                                                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                                                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                                    </svg>
+                                                </button>
+                                            </td>
                                         </tr>
                                     {% endfor %}
                                 {% endfor %}
                             {% else %}
-                                <tr><td colspan="4" style="text-align:center; color:#888; padding:16px;">Nenhum histórico encontrado.</td></tr>
+                                <tr><td colspan="6" style="text-align:center; color:#888; padding:16px;">Nenhum histórico encontrado.</td></tr>
                             {% endif %}
                         </tbody>
                     </table>
@@ -486,8 +526,163 @@
             .tab-btn { background:#eee; color:#222; border-radius:5px 5px 0 0; border:none; padding:0.5rem 1.2rem; font-weight:bold; cursor:pointer; }
             .tab-btn.active { background:#1976d2; color:#fff; }
             </style>
+            <style>
+            .btn-icon { width:28px; height:28px; background:#f3f3f3; border:1px solid #ddd; border-radius:6px; display:inline-grid; place-items:center; cursor:pointer; }
+            .btn-icon:hover { background:#e9e9e9; }
+            /* Modal */
+            #details-modal { position:fixed; inset:0; background:rgba(0,0,0,0.45); display:none; align-items:center; justify-content:center; z-index:9999; }
+            #details-card { width: min(820px, 92vw); max-height: 85vh; overflow:auto; background:#fff; border-radius:10px; box-shadow:0 8px 30px rgba(0,0,0,0.25); padding:22px; }
+            #details-card h3 { margin:0 0 10px; text-align:left; }
+            #details-card .line { margin:6px 0; display:flex; gap:8px; justify-content:flex-start; flex-wrap:wrap; color:#333; text-align:left; }
+            #details-card .kv { margin:4px 0; color:#333; text-align:left; }
+            #details-card .kv strong { font-weight:700; }
+            #details-card .muted { color:#666; font-size: 13px; text-align:left; }
+            #details-card .kv-list { margin: 4px 0 8px 14px; padding-left: 0; }
+            #details-card .kv-list li { margin: 2px 0; }
+            #modal-close { position:absolute; top:14px; right:14px; background:#f3f3f3; border:1px solid #ddd; border-radius:6px; width:28px; height:28px; display:grid; place-items:center; cursor:pointer; }
+            </style>
+            <div id="details-modal">
+                <div id="details-card" style="position:relative;">
+                    <button id="modal-close" title="Fechar">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                    <h3 id="details-title">Detalhes da Empresa</h3>
+                    <div id="details-body">
+                        <div class="muted">Carregando...</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     </div>
+<script>
+// Helpers
+function formatCNPJ(cnpj) {
+    const d = (cnpj || '').replace(/\D/g, '').padStart(14, '0');
+    return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+}
+function formatCurrencyBRL(n) {
+    if (n == null || n === '' || isNaN(Number(n))) return '—';
+    try { return Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); } catch { return String(n); }
+}
+function esc(str){ return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[s])); }
+
+async function openDetailsModalForCNPJ(cnpj) {
+    const modal = document.getElementById('details-modal');
+    const body = document.getElementById('details-body');
+    const title = document.getElementById('details-title');
+    title.textContent = `Detalhes: ${formatCNPJ(cnpj)}`;
+    body.innerHTML = `<div class="muted">Carregando...</div>`;
+    modal.style.display = 'flex';
+    try {
+        // Tenta obter dados já salvos na página (resultados/histórico)
+        let data = null;
+        // Busca na tabela de resultados
+        const resRows = document.querySelectorAll('#tab-resultado tbody tr');
+        for (const tr of resRows) {
+            const cnpjCell = tr.children && tr.children[1] ? (tr.children[1].textContent || '').replace(/\D/g, '') : '';
+            if (cnpjCell === cnpj) {
+                break;
+            }
+        }
+  
+        let resp = await fetch(`/api/detalhes/${cnpj}/`);
+        if (!resp.ok) {
+            // Fallback: consulta direta (mantido como rede de segurança)
+            resp = await fetch(`/cnpj/${cnpj}/`);
+        }
+        if (!resp.ok) throw new Error('HTTP '+resp.status);
+        data = await resp.json();
+        // Extract highlights
+        const updated = data.updated ? new Date(data.updated).toLocaleString('pt-BR') : '—';
+        const taxId = data.taxId || cnpj;
+        const company = data.company || {}; 
+        const name = company.name || '—';
+        const equity = formatCurrencyBRL(company.equity);
+        const nature = (company.nature && company.nature.text) ? company.nature.text : '—';
+        const size = (company.size && (company.size.acronym || company.size.text)) ? `${company.size.acronym||''} ${company.size.text||''}`.trim() : '—';
+        const alias = data.alias || '—';
+        const founded = data.founded || '—';
+        const status = (data.status && data.status.text) ? data.status.text : '—';
+        const head = (data.head === true) ? 'Matriz' : (data.head === false ? 'Filial' : '—');
+    const mainActText = (data.mainActivity && data.mainActivity.text) ? data.mainActivity.text : null;
+    const mainActId = (data.mainActivity && data.mainActivity.id != null) ? String(data.mainActivity.id) : null;
+    const mainAct = (mainActId || mainActText) ? `${esc(mainActId||'')} ${mainActText ? (mainActId?'- ':'')+esc(mainActText): ''}`.trim() : '—';
+        const addr = data.address || {};
+        const addressLine = [addr.street, addr.number, addr.district].filter(Boolean).join(', ');
+    const cityLine = [addr.city, addr.state, addr.zip].filter(Boolean).join(' - ');
+    const countryName = (addr.country && addr.country.name) ? addr.country.name : null;
+    const municipality = (addr.municipality != null) ? String(addr.municipality) : null;
+    const details = addr.details ? String(addr.details) : null;
+    const emails = Array.isArray(data.emails) ? data.emails.map(e => e.address).filter(Boolean) : [];
+    const phones = Array.isArray(data.phones) ? data.phones.map(p => `${p.type ? p.type+': ' : ''}${p.area||''} ${p.number||''}`.trim()).filter(Boolean) : [];
+    const side = Array.isArray(data.sideActivities) ? data.sideActivities.map(a => `${a.id!=null? a.id+' - ' : ''}${a.text||''}`.trim()).filter(Boolean) : [];
+    const statusDate = data.statusDate || null;
+    const members = (company && Array.isArray(company.members)) ? company.members : [];
+
+    let html = '';
+    html += `<div class="line"><strong style="font-size:16px;">${esc(name)}</strong></div>`;
+    html += `<div class="kv"><strong>CNPJ:</strong> ${esc(formatCNPJ(taxId))}</div>`;
+    html += `<div class="kv"><strong>Atualizado:</strong> ${esc(updated)}</div>`;
+    html += `<div class="kv"><strong>Capital:</strong> ${esc(equity)}</div>`;
+    html += `<div class="kv"><strong>Natureza:</strong> ${esc(nature)}</div>`;
+    html += `<div class="kv"><strong>Porte:</strong> ${esc(size)}</div>`;
+    html += `<div class="kv"><strong>Apelido:</strong> ${esc(alias)}</div>`;
+    html += `<div class="kv"><strong>Fundação:</strong> ${esc(founded)}</div>`;
+        html += `<div class=\"kv\"><strong>Situação:</strong> ${esc(status)}</div>`;
+        if (statusDate) html += `<div class=\"kv\"><strong>Data da Situação:</strong> ${esc(statusDate)}</div>`;
+    html += `<div class="kv"><strong>Tipo:</strong> ${esc(head)}</div>`;
+    html += `<div class="kv"><strong>Atividade Principal:</strong> ${esc(mainAct)}</div>`;
+        if (addressLine || cityLine) html += `<div class=\"kv\"><strong>Endereço:</strong> ${esc(addressLine)}${addressLine && cityLine ? ' - ' : ''}${esc(cityLine)}</div>`;
+        if (details) html += `<div class=\"kv\"><strong>Complemento:</strong> ${esc(details)}</div>`;
+        if (municipality) html += `<div class=\"kv\"><strong>Município (IBGE):</strong> ${esc(municipality)}</div>`;
+        if (countryName) html += `<div class=\"kv\"><strong>País:</strong> ${esc(countryName)}</div>`;
+    if (emails.length) html += `<div class="kv"><strong>E-mails:</strong> ${esc(emails.join(' | '))}</div>`;
+    if (phones.length) html += `<div class="kv"><strong>Telefones:</strong> ${esc(phones.join(' | '))}</div>`;
+    if (side.length) html += `<div class="kv"><strong>Atividades Secundárias:</strong> ${esc(side.join(' | '))}</div>`;
+        if (members && members.length) {
+            html += `<div class=\"kv\"><strong>Administradores:</strong></div>`;
+            html += `<ul class=\"kv-list\">`;
+            for (const m of members) {
+                const since = m.since || '—';
+                const roleText = (m.role && m.role.text) ? m.role.text : '—';
+                const personName = (m.person && m.person.name) ? m.person.name : '—';
+                const ageBand = (m.person && m.person.age) ? m.person.age : null;
+                const type = (m.person && m.person.type) ? m.person.type : null;
+                const extra = [type, ageBand].filter(Boolean).join(', ');
+                html += `<li>${esc(roleText)} — ${esc(personName)} (desde ${esc(since)}${extra?'; '+esc(extra):''})</li>`;
+            }
+            html += `</ul>`;
+        }
+        body.innerHTML = html;
+    } catch (err) {
+        body.innerHTML = `<div class="muted">Falha ao carregar detalhes (${esc(err.message)})</div>`;
+    }
+}
+
+// Close modal
+document.getElementById('modal-close').addEventListener('click', () => {
+    document.getElementById('details-modal').style.display = 'none';
+});
+document.getElementById('details-modal').addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'details-modal') {
+        document.getElementById('details-modal').style.display = 'none';
+    }
+});
+
+// Event delegation for details buttons (results and history)
+document.addEventListener('DOMContentLoaded', () => {
+    const resultsTbody = document.querySelector('#tab-resultado tbody');
+    const histTbody = document.querySelector('#tab-historico tbody');
+    function delegateHandler(e) {
+        const btn = e.target.closest('.btn-details');
+        if (!btn) return;
+        const cnpj = (btn.getAttribute('data-cnpj') || '').replace(/\D/g, '');
+        if (cnpj.length === 14) openDetailsModalForCNPJ(cnpj);
+    }
+    if (resultsTbody) resultsTbody.addEventListener('click', delegateHandler);
+    if (histTbody) histTbody.addEventListener('click', delegateHandler);
+});
+</script>
 </body>
 </html>
