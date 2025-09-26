@@ -1,3 +1,5 @@
+"""Configuração da app 'consulta'."""
+
 from django.apps import AppConfig
 
 

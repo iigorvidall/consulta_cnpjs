@@ -1,3 +1,6 @@
-from django.test import TestCase
+"""Testes unitários/integração da app 'consulta'.
 
-# Create your tests here.
+Adicionar casos para serviços (parsing CSV/XLSX), views de job e API CNPJA.
+"""
+
+from django.test import TestCase

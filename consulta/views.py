@@ -1,3 +1,13 @@
+"""Views da aplicação 'consulta'.
+
+Este módulo contém:
+- Views HTML (home) com proteção por login.
+- Endpoints de exportação de resultados/histórico (CSV/XLSX) baseados em sessão ou banco.
+- Endpoints auxiliares (créditos, detalhes por CNPJ) com cache e fallback.
+- Um fluxo de processamento em lote baseado em sessão (jobs_* via polling).
+- Autenticação (login/logout/signup) com mitigação de brute force via cache.
+"""
+
 from django.http import JsonResponse
 from django.shortcuts import render
 from .models import ConsultaHistorico
@@ -22,16 +32,29 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
 from django.utils import timezone
 from .forms import ConsultaForm  # existing
-from .forms import LoginForm, SignupForm
+from .forms import LoginForm
 from rest_framework.permissions import IsAuthenticated
 
 @login_required(login_url='login')
 def status_retry(request):
+	"""Retorna o status textual do último retry registrado na sessão.
+
+	Usado pelo frontend para exibir mensagens durante backoff (por exemplo, HTTP 429).
+	"""
 	status = request.session.get('status_retry', '')
 	return JsonResponse({'status': status})
 
 @login_required(login_url='login')
 def home(request):
+	"""Renderiza a página principal de consulta e trata submissões POST.
+
+	POST aceita:
+	- cnpjs: lista separada por vírgulas (processamento manual);
+	- csv_file: arquivo CSV ou XLSX (processamento por upload).
+
+	Persiste um snapshot do resultado (ou erro) em `ConsultaHistorico` e
+	os últimos resultados na sessão para exportações.
+	"""
 	error_msg = None
 	resultados = []
 	historico = ConsultaHistorico.objects.order_by('-data')[:30]
@@ -89,6 +112,7 @@ def home(request):
 
 @login_required(login_url='login')
 def export_resultado_csv(request):
+	"""Exporta os últimos resultados da sessão como CSV (sem coluna Data)."""
 	resultados = request.session.get('ultimos_resultados', [])
 	csv_data = exportar_csv(resultados)
 	response = HttpResponse(csv_data, content_type='text/csv')
@@ -98,6 +122,7 @@ def export_resultado_csv(request):
 
 @login_required(login_url='login')
 def export_resultado_xlsx(request):
+	"""Exporta os últimos resultados da sessão como XLSX (sem coluna Data)."""
 	resultados = request.session.get('ultimos_resultados', [])
 	xlsx_data = exportar_xlsx(resultados)
 	response = HttpResponse(xlsx_data, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -107,6 +132,7 @@ def export_resultado_xlsx(request):
 
 @login_required(login_url='login')
 def export_historico_csv(request):
+	"""Exporta todo o histórico do banco como CSV (inclui coluna Data)."""
 	historico = ConsultaHistorico.objects.order_by('-data')
 	resultados = []
 	for h in historico:
@@ -122,6 +148,7 @@ def export_historico_csv(request):
 
 @login_required(login_url='login')
 def export_historico_xlsx(request):
+	"""Exporta todo o histórico do banco como XLSX (inclui coluna Data)."""
 	historico = ConsultaHistorico.objects.order_by('-data')
 	resultados = []
 	for h in historico:
@@ -219,6 +246,11 @@ class ConsultaCNPJView(APIView):
 # --------- Abordagem simples com polling (sem Celery) ---------
 
 def _init_job_session(request, items):
+	"""Inicializa a estrutura de job na sessão.
+
+	Normaliza `items` (strings ou dicts {cnpj, processo}), aplica deduplicação por par
+	(cnpj, processo), e registra contadores/estado para o loop de processamento.
+	"""
 	# items pode ser lista de strings (cnpj) ou dicts {cnpj, processo}
 	normalized = []
 	seen = set()  # dedup apenas pares idênticos (cnpj, processo)
@@ -468,6 +500,7 @@ def jobs_finalize(request):
 @csrf_exempt
 @login_required(login_url='login')
 def jobs_pause(request):
+	"""Pausa o job em andamento marcando o status como 'paused'."""
 	job = request.session.get('job')
 	if not job:
 		return JsonResponse({'detail': 'Nenhum job em andamento.'}, status=400)
@@ -481,6 +514,7 @@ def jobs_pause(request):
 @csrf_exempt
 @login_required(login_url='login')
 def jobs_resume(request):
+	"""Retoma o job pausado, marcando o status como 'running'."""
 	job = request.session.get('job')
 	if not job:
 		return JsonResponse({'detail': 'Nenhum job em andamento.'}, status=400)
@@ -494,6 +528,7 @@ def jobs_resume(request):
 @csrf_exempt
 @login_required(login_url='login')
 def jobs_cancel(request):
+	"""Cancela o job atual e esvazia a fila remanescente para encerrar o loop."""
 	job = request.session.get('job')
 	if not job:
 		return JsonResponse({'detail': 'Nenhum job em andamento.'}, status=400)
@@ -508,13 +543,14 @@ def jobs_cancel(request):
 # -------------------- Autenticação --------------------
 
 def _client_ip(request):
+	"""Obtém o IP do cliente considerando X-Forwarded-For quando presente."""
 	xff = request.META.get('HTTP_X_FORWARDED_FOR')
 	if xff:
 		return xff.split(',')[0].strip()
 	return request.META.get('REMOTE_ADDR') or '0.0.0.0'
 
 def _is_locked(identifier: str) -> int:
-	# retorna segundos restantes de bloqueio ou 0
+	"""Retorna segundos restantes de bloqueio para `identifier` ou 0 se livre."""
 	key = f"lock:{identifier}"
 	ttl = cache.ttl(key) if hasattr(cache, 'ttl') else None
 	if cache.get(key):
@@ -522,6 +558,7 @@ def _is_locked(identifier: str) -> int:
 	return 0
 
 def _register_fail(identifier: str):
+	"""Registra falha de login e aplica bloqueio após limite configurado."""
 	max_attempts = int(getattr(__import__('django.conf').conf.settings, 'LOGIN_MAX_ATTEMPTS', 5))
 	lock_seconds = int(getattr(__import__('django.conf').conf.settings, 'LOGIN_LOCKOUT_SECONDS', 900))
 	count_key = f"attempts:{identifier}"
@@ -531,10 +568,12 @@ def _register_fail(identifier: str):
 		cache.set(f"lock:{identifier}", True, timeout=lock_seconds)
 
 def _reset_attempts(identifier: str):
+	"""Limpa contadores/locks de tentativa para `identifier`."""
 	cache.delete_many([f"attempts:{identifier}", f"lock:{identifier}"])
 
 
 def login_view(request):
+	"""Tela e submissão de login com mitigação de brute force por IP/identificador."""
 	if request.user.is_authenticated:
 		return redirect('home')
 	form = LoginForm(request.POST or None)
@@ -576,17 +615,9 @@ def login_view(request):
 
 
 def logout_view(request):
+	"""Efetua logout e redireciona para a tela de login."""
 	auth_logout(request)
 	return redirect('login')
 
 
-def signup_view(request):
-	if request.user.is_authenticated:
-		return redirect('home')
-	form = SignupForm(request.POST or None)
-	if request.method == 'POST' and form.is_valid():
-		user = form.save()
-		# login automático após cadastro
-		auth_login(request, user)
-		return redirect('home')
-	return render(request, 'auth/signup.html', {'form': form})
+# signup desabilitado para uso interno (sem rota pública)

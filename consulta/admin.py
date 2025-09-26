@@ -1,3 +1,6 @@
-from django.contrib import admin
+"""Admin da app 'consulta'.
 
-# Register your models here.
+Poderá registrar modelos (ConsultaHistorico etc.) se necessário no futuro.
+"""
+
+from django.contrib import admin

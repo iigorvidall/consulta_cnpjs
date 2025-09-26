@@ -1,3 +1,12 @@
+"""Camada de serviços da app 'consulta'.
+
+Responsabilidades principais:
+- Sanitização e formatação de CNPJ.
+- Integração com CNPJÁ PRO via `clients.cnpja.CNPJAClient` (com retry/backoff).
+- Processamento de entradas CSV/XLSX e agregação dos resultados.
+- Exportação em formatos CSV/XLSX.
+"""
+
 import re
 import csv
 import io
@@ -8,9 +17,13 @@ import xlsxwriter
 from django.conf import settings
 from clients.cnpja import CNPJAClient, CNPJAClientError
 
-DELAY_SECONDS = 1  # Delay fixo entre consultas para respeitar limites e UX
+DELAY_SECONDS = 1  # Delay fixo entre consultas para respeitar limites de API e UX
 
 def processar_cnpjs_manualmente(cnpjs: str, on_retry=None):
+    """Processa uma string de CNPJs separados por vírgula sequencialmente.
+
+    Retorna (lista_cnpjs_limpos, lista_resultados). Aplica DELAY_SECONDS entre chamadas.
+    """
     cnpj_list = [clean_cnpj(c) for c in cnpjs.split(',') if clean_cnpj(c)]
     resultados = []
     for cnpj in cnpj_list:
@@ -20,15 +33,23 @@ def processar_cnpjs_manualmente(cnpjs: str, on_retry=None):
     return cnpj_list, resultados
 
 def clean_cnpj(cnpj):
+    """Remove todos os caracteres não numéricos do CNPJ."""
     return re.sub(r'\D', '', cnpj)
 
 def format_cnpj(cnpj):
+    """Formata um CNPJ 14 dígitos para 00.000.000/0000-00."""
     cnpj = re.sub(r'\D', '', cnpj)
     if len(cnpj) == 14:
         return f"{cnpj[:2]}.{cnpj[2:5]}.{cnpj[5:8]}/{cnpj[8:12]}-{cnpj[12:]}"
     return cnpj
 
 def consultar_cnpj_api(cnpj, retry_count=3, retry_wait=20, on_retry=None):
+    """Consulta a API PRO do CNPJÁ com retry/backoff e extração resiliente de campos.
+
+    - retry_count: tentativas para erros transitórios (429/timeout/connerror).
+    - retry_wait: segundos de espera entre tentativas (backoff constante).
+    - on_retry: callback opcional (attempt:int, wait:int) para feedback de UI.
+    """
     client = CNPJAClient()
     clean = clean_cnpj(cnpj)
     for attempt in range(retry_count):
@@ -94,6 +115,11 @@ def consultar_cnpj_api(cnpj, retry_count=3, retry_wait=20, on_retry=None):
     }
 
 def processar_csv(file, logger=None, on_retry=None):
+    """Lê um CSV, detecta colunas relevantes e consulta a API por linha.
+
+    Aceita fallback por varredura dos campos quando o cabeçalho é inconsistente.
+    Aplica DELAY_SECONDS entre chamadas.
+    """
     decoded = file.read().decode('utf-8')
     reader = csv.DictReader(io.StringIO(decoded))
     cnpj_keys = ['cnpj', 'CNPJ', 'CNPJ/CPF', 'cnpj_cpf']
@@ -125,6 +151,7 @@ def processar_csv(file, logger=None, on_retry=None):
     return resultados
 
 def processar_xlsx(file, logger=None, on_retry=None):
+    """Lê um XLSX (primeira planilha), detecta colunas e consulta API por linha."""
     wb = openpyxl.load_workbook(file, read_only=True)
     ws = wb.active
     headers = [str(cell.value).strip() if cell.value else '' for cell in next(ws.iter_rows(min_row=1, max_row=1))]
@@ -154,6 +181,10 @@ def processar_xlsx(file, logger=None, on_retry=None):
     return resultados
 
 def exportar_csv(resultados, include_data=False):
+    """Gera CSV em memória a partir da lista de resultados.
+
+    Quando include_data=True, inclui a coluna Data (para histórico).
+    """
     output = io.StringIO()
     writer = csv.writer(output)
     if include_data:
@@ -176,6 +207,10 @@ def exportar_csv(resultados, include_data=False):
     return output.getvalue()
 
 def exportar_xlsx(resultados, include_data=False):
+    """Gera XLSX em memória a partir da lista de resultados.
+
+    Quando include_data=True, inclui a coluna Data (para histórico).
+    """
     output = io.BytesIO()
     wb = xlsxwriter.Workbook(output, {'in_memory': True})
     ws = wb.add_worksheet('Export')
