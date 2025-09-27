@@ -36,8 +36,15 @@ def processar_cnpjs_manualmente(cnpjs: str, on_retry=None):
 
 
 def clean_cnpj(cnpj):
-    """Remove todos os caracteres não numéricos do CNPJ."""
-    return re.sub(r'\D', '', cnpj)
+    """Normaliza CNPJ:
+
+    - Remove todos os caracteres não numéricos;
+    - Caso tenha 12 ou 13 dígitos (zeros à esquerda perdidos), preenche com zeros à esquerda até 14.
+    """
+    digits = re.sub(r'\D', '', str(cnpj or ''))
+    if 12 <= len(digits) < 14:
+        digits = digits.zfill(14)
+    return digits
 
 
 def format_cnpj(cnpj):
@@ -149,17 +156,17 @@ def consultar_cnpj_api(cnpj, retry_count=3, retry_wait=20, on_retry=None):
 
 
 def _extract_first_cnpj_from_text(text: str):
-    """Extrai o primeiro CNPJ (mascarado ou 14 dígitos) de um texto; retorna 14 dígitos ou None."""
+    """Extrai o primeiro CNPJ (mascarado ou 12–14 dígitos) de um texto; retorna 14 dígitos (zerado à esquerda se necessário) ou None."""
     if not text:
         return None
     # 00.000.000/0000-00
     m = re.search(r"\b\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}\b", text)
     if m:
         return clean_cnpj(m.group(0))
-    # 14 dígitos
-    m = re.search(r"(?<!\d)(\d{14})(?!\d)", text)
+    # 12 a 14 dígitos (para capturar CNPJs que perderam zeros à esquerda)
+    m = re.search(r"(?<!\d)(\d{12,14})(?!\d)", text)
     if m:
-        return m.group(1)
+        return clean_cnpj(m.group(1))
     return None
 
 
