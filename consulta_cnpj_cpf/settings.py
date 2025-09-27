@@ -99,8 +99,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CNPJA_API_KEY = os.getenv('CNPJA_API_KEY')
 CNPJA_BASE_URL = os.getenv('CNPJA_BASE_URL', 'https://api.cnpja.com')
 CNPJA_STRATEGY = os.getenv('CNPJA_STRATEGY', 'CACHE_IF_FRESH')
+CNPJA_FORCE_CACHE_FIRST = os.getenv('CNPJA_FORCE_CACHE_FIRST', 'True').lower() in ('1','true','yes')
 try:
-    CNPJA_MAX_AGE_DAYS = int(os.getenv('CNPJA_MAX_AGE_DAYS', '14'))
+    CNPJA_MAX_AGE_DAYS = int(os.getenv('CNPJA_MAX_AGE_DAYS', '40'))
 except ValueError:
     CNPJA_MAX_AGE_DAYS = 14
 try:

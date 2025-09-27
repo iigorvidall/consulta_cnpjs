@@ -30,6 +30,7 @@ def processar_cnpjs_manualmente(cnpjs: str, on_retry=None):
     for cnpj in cnpj_list:
         resultado = consultar_cnpj_api(cnpj, on_retry=on_retry)
         resultados.append(resultado)
+        print(f"[DELAY] Aguardando {DELAY_SECONDS}s para próxima requisição...")
         time.sleep(DELAY_SECONDS)
     return cnpj_list, resultados
 
@@ -56,65 +57,93 @@ def consultar_cnpj_api(cnpj, retry_count=3, retry_wait=20, on_retry=None):
     """
     client = CNPJAClient()
     clean = clean_cnpj(cnpj)
+    last_error = None
+    prefer_cache_first = getattr(settings, 'CNPJA_FORCE_CACHE_FIRST', True)
+    # Monta a sequência de estratégias: tenta CACHE puro antes de consultar online
+    base_strategy = getattr(settings, 'CNPJA_STRATEGY', 'CACHE_IF_FRESH')
+    max_age = getattr(settings, 'CNPJA_MAX_AGE_DAYS', 40)
+    max_stale = getattr(settings, 'CNPJA_MAX_STALE_DAYS', 30)
+    strategies = []
+    if prefer_cache_first:
+        strategies.append(('CACHE', None, None))  # não consome créditos
+    strategies.append((base_strategy, max_age, max_stale))
+
     for attempt in range(retry_count):
-        try:
-            data = client.get_office(
-                clean,
-                timeout=30,
-                strategy=getattr(settings, 'CNPJA_STRATEGY', 'CACHE_IF_FRESH'),
-                max_age_days=getattr(settings, 'CNPJA_MAX_AGE_DAYS', 14),
-                max_stale_days=getattr(settings, 'CNPJA_MAX_STALE_DAYS', 30),
-            )
-            # Extração resiliente de nome e email a partir do payload da API PRO
-            nome = (
-                (data.get('company') or {}).get('name')
-                or data.get('name')
-                or '-'
-            )
-            email = 'Sem e-mail'
-            emails = data.get('emails')
-            if isinstance(emails, list) and emails:
-                first = emails[0]
-                if isinstance(first, dict):
-                    email = first.get('address') or first.get('email') or 'Sem e-mail'
-                elif isinstance(first, str):
-                    email = first
-            return {
-                'cnpj': format_cnpj(clean),
-                'nome': nome,
-                'email': email,
-                'detalhes': data
-            }
-        except CNPJAClientError as e:
-            msg = str(e)
-            # Se for rate limit, aguarda e tenta novamente
-            if '429' in msg:
-                if on_retry:
-                    on_retry(attempt + 1, retry_wait)
-                time.sleep(retry_wait)
-                continue
-            return {
-                'cnpj': format_cnpj(clean),
-                'nome': '-',
-                'email': f'Erro API PRO: {msg[:200]}',
-                'detalhes': None
-            }
-        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
-            if on_retry:
-                on_retry(attempt + 1, retry_wait)
-            time.sleep(retry_wait)
-            continue
-        except Exception as e:
-            return {
-                'cnpj': format_cnpj(clean),
-                'nome': '-',
-                'email': f'Erro inesperado: {str(e)[:200]}',
-                'detalhes': None
-            }
+        # Dentro de cada tentativa, percorre a sequência de estratégias
+        for strat, s_max_age, s_max_stale in strategies:
+            try:
+                start_time = time.time()
+                data = client.get_office(
+                    clean,
+                    timeout=30,
+                    strategy=strat,
+                    max_age_days=s_max_age,
+                    max_stale_days=s_max_stale,
+                )
+                elapsed = time.time() - start_time
+                nome = (
+                    (data.get('company') or {}).get('name')
+                    or data.get('name')
+                    or '-'
+                )
+                email = 'Sem e-mail'
+                emails = data.get('emails')
+                if isinstance(emails, list) and emails:
+                    first = emails[0]
+                    if isinstance(first, dict):
+                        email = first.get('address') or first.get('email') or 'Sem e-mail'
+                    elif isinstance(first, str):
+                        email = first
+                stale_flag = data.get('stale')
+                via = strat + (' (stale)' if stale_flag else '')
+                print(f"[CONSULTA] CNPJ {format_cnpj(clean)} | via={via} | resposta={elapsed:.2f}s")
+                return {
+                    'cnpj': format_cnpj(clean),
+                    'nome': nome,
+                    'email': email,
+                    'detalhes': data
+                }
+            except CNPJAClientError as e:
+                msg = str(e)
+                last_error = msg
+                # Se estratégia CACHE não encontrou dados (404), tenta próxima sem contar como retry
+                if strat == 'CACHE' and '404' in msg:
+                    print(f"[CACHE MISS] CNPJ {format_cnpj(clean)}: sem dados em cache. Tentando estratégia {base_strategy}...")
+                    continue
+                print(f"[ERRO API PRO] via={strat} CNPJ {format_cnpj(clean)}: {msg}")
+                if '429' in msg:
+                    if on_retry:
+                        on_retry(attempt + 1, retry_wait)
+                    # passa para próxima tentativa (retry)
+                    break
+                # Para outros erros, encerra
+                return {
+                    'cnpj': format_cnpj(clean),
+                    'nome': '-',
+                    'email': f'Erro API PRO: {msg[:200]}',
+                    'detalhes': None
+                }
+            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+                last_error = 'Timeout/ConnectionError'
+                print(f"[TIMEOUT/CONNECTION ERROR] via={strat} CNPJ {format_cnpj(clean)}: Tentativa {attempt+1}")
+                # passa para próxima tentativa (retry)
+                break
+            except Exception as e:
+                last_error = str(e)
+                print(f"[ERRO INESPERADO] CNPJ {format_cnpj(clean)}: {str(e)}")
+                return {
+                    'cnpj': format_cnpj(clean),
+                    'nome': '-',
+                    'email': f'Erro inesperado: {str(e)[:200]}',
+                    'detalhes': None
+                }
+        # se chegou aqui, irá para a próxima tentativa por causa de 429/timeout
+        if on_retry:
+            on_retry(attempt + 1, retry_wait)
     return {
         'cnpj': format_cnpj(clean),
         'nome': '-',
-        'email': 'Limite de tentativas excedido devido a rate limit (429).',
+        'email': f'Limite de tentativas excedido: {last_error}',
         'detalhes': None
     }
 
