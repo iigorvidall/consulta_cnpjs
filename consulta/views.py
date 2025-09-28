@@ -284,7 +284,6 @@ def _init_job_session(request, items):
 
 
 @require_http_methods(["POST"])
-@csrf_exempt
 @login_required(login_url='login')
 def jobs_start(request):
 	"""Inicia um job a partir de CSV/XLSX ou lista manual de CNPJs, salvando na sessão."""
@@ -427,7 +426,6 @@ def jobs_start(request):
 
 
 @require_http_methods(["POST"])
-@csrf_exempt
 @login_required(login_url='login')
 def jobs_step(request):
 	"""Processa um item da fila do job na sessão e retorna o resultado parcial."""
@@ -467,7 +465,6 @@ def jobs_step(request):
 
 
 @require_http_methods(["POST"])
-@csrf_exempt
 @login_required(login_url='login')
 def jobs_finalize(request):
 	"""Persiste os resultados do job no histórico e finaliza, limpando o job da sessão."""
@@ -497,7 +494,6 @@ def jobs_finalize(request):
 
 
 @require_http_methods(["POST"])
-@csrf_exempt
 @login_required(login_url='login')
 def jobs_pause(request):
 	"""Pausa o job em andamento marcando o status como 'paused'."""
@@ -511,7 +507,6 @@ def jobs_pause(request):
 
 
 @require_http_methods(["POST"])
-@csrf_exempt
 @login_required(login_url='login')
 def jobs_resume(request):
 	"""Retoma o job pausado, marcando o status como 'running'."""
@@ -525,7 +520,6 @@ def jobs_resume(request):
 
 
 @require_http_methods(["POST"])
-@csrf_exempt
 @login_required(login_url='login')
 def jobs_cancel(request):
 	"""Cancela o job atual e esvazia a fila remanescente para encerrar o loop."""

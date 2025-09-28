@@ -1,12 +1,16 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ÍGNEA - Consulta CNPJ</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <!-- Font Awesome for the logout icon -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
     <style>
         :root {
             --ignea-brown: #a4896a;
@@ -18,14 +22,19 @@
             --ignea-muted: #a0a0a0;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
         body {
             font-family: 'Montserrat', sans-serif;
             background-color: var(--ignea-dark);
             color: var(--ignea-text);
             min-height: 100vh;
-            padding-bottom: 32px; /* espaço ao fim da tela */
+            padding-bottom: 32px;
+            /* espaço ao fim da tela */
         }
 
         .ignea-container {
@@ -37,15 +46,23 @@
             position: relative;
             transition: padding 600ms ease, margin 600ms ease, border-color 600ms ease;
         }
+
         /* Área colapsável dos inputs (consulta manual e upload) */
         #aba-consulta {
             overflow: hidden;
-            max-height: 360px; /* altura aberta aprox. */
+            max-height: 360px;
+            /* altura aberta aprox. */
             opacity: 1;
             transition: max-height 720ms ease, opacity 600ms ease, margin 600ms ease;
-            margin-top: 12px; /* espaço entre seta e primeira linha (labels) */
+            margin-top: 12px;
+            /* espaço entre seta e primeira linha (labels) */
         }
-        .ignea-container.is-compact { padding-top: 12px; padding-bottom: 12px; }
+
+        .ignea-container.is-compact {
+            padding-top: 12px;
+            padding-bottom: 12px;
+        }
+
         .ignea-container.is-compact #aba-consulta {
             max-height: 0;
             opacity: 0;
@@ -59,25 +76,44 @@
             border: 1px solid var(--ignea-brown);
             color: var(--ignea-brown);
             border-radius: 999px;
-            width: 32px; height: 32px;
-            display: inline-flex; align-items: center; justify-content: center;
+            width: 32px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             padding: 0;
-            position: absolute; top: 12px; right: 12px; transform: none;
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            transform: none;
             z-index: 3;
             transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
         }
-        .toggle-card-btn:hover { background-color: var(--ignea-brown); color: var(--ignea-dark); }
-        .toggle-card-btn svg { transition: transform 360ms ease; }
-        .ignea-container.is-compact .toggle-card-btn svg { transform: rotate(180deg); }
+
+        .toggle-card-btn:hover {
+            background-color: var(--ignea-brown);
+            color: var(--ignea-dark);
+        }
+
+        .toggle-card-btn svg {
+            transition: transform 360ms ease;
+        }
+
+        .ignea-container.is-compact .toggle-card-btn svg {
+            transform: rotate(180deg);
+        }
 
         .ignea-logo {
             display: flex;
             justify-content: center;
             align-items: center;
-            margin-bottom: 32px;
+            margin-bottom: 12px;
             padding: 20px 0;
         }
-        .ignea-logo img { max-height: 120px; width: auto; }
+
+        .ignea-logo img {
+            width: 200px;
+        }
 
         .ignea-input {
             background-color: var(--ignea-gray);
@@ -91,10 +127,14 @@
             box-shadow: none;
             transition: border-color 0.2s;
         }
+
         .ignea-input:focus {
             border-color: var(--ignea-brown);
         }
-        .ignea-input::placeholder { color: rgba(160, 160, 160, 0.4); }
+
+        .ignea-input::placeholder {
+            color: rgba(160, 160, 160, 0.4);
+        }
 
         .ignea-button {
             background-color: transparent;
@@ -105,17 +145,49 @@
             font-weight: 500;
             transition: all 0.2s ease;
             cursor: pointer;
-            text-decoration: none; /* remove sublinhado de anchors */
+            text-decoration: none;
+            /* remove sublinhado de anchors */
         }
-        .ignea-button:hover { background-color: var(--ignea-brown); color: var(--ignea-dark); text-decoration: none; }
-        .ignea-button:disabled { opacity: 0.5; cursor: not-allowed; }
-    a.ignea-button, a.ignea-button:hover, a.ignea-button:focus { text-decoration: none; }
+
+        .ignea-button:hover {
+            background-color: var(--ignea-brown);
+            color: var(--ignea-dark);
+            text-decoration: none;
+        }
+
+        .ignea-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        a.ignea-button,
+        a.ignea-button:hover,
+        a.ignea-button:focus {
+            text-decoration: none;
+        }
 
         /* Ícone-only generic button (ex: Limpar) */
-        .btn-icon-only { padding: 8px; width: 36px; height: 36px; display: inline-grid; place-items: center; }
-        .btn-danger-outline:hover { background: #d32f2f; border-color: #d32f2f; color: #fff; }
-        .btn-action-fixed { min-width: 140px; }
-        .actions-row { padding-right: 52px; }
+        .btn-icon-only {
+            padding: 8px;
+            width: 36px;
+            height: 36px;
+            display: inline-grid;
+            place-items: center;
+        }
+
+        .btn-danger-outline:hover {
+            background: #d32f2f;
+            border-color: #d32f2f;
+            color: #fff;
+        }
+
+        .btn-action-fixed {
+            min-width: 140px;
+        }
+
+        .actions-row {
+            padding-right: 52px;
+        }
 
         .ignea-tab {
             background-color: var(--ignea-gray);
@@ -128,7 +200,11 @@
             border: none;
             margin-right: 2px;
         }
-        .ignea-tab.active { background-color: var(--ignea-brown); color: var(--ignea-dark); }
+
+        .ignea-tab.active {
+            background-color: var(--ignea-brown);
+            color: var(--ignea-dark);
+        }
 
         .ignea-table {
             background-color: var(--ignea-gray);
@@ -148,7 +224,10 @@
             background-color: var(--ignea-gray) !important;
             transition: background-color 0.2s ease;
         }
-        .ignea-table-row:hover { background-color: var(--ignea-border) !important; }
+
+        .ignea-table-row:hover {
+            background-color: var(--ignea-border) !important;
+        }
 
         .ignea-select {
             background-color: var(--ignea-gray);
@@ -159,7 +238,10 @@
             font-size: 14px;
         }
 
-    .search-input-wide { min-width: 260px; width: clamp(220px, 32vw, 420px); }
+        .search-input-wide {
+            min-width: 260px;
+            width: clamp(220px, 32vw, 420px);
+        }
 
         .ignea-file-input {
             background-color: var(--ignea-gray);
@@ -184,6 +266,7 @@
             cursor: pointer;
             line-height: 0;
         }
+
         .btn-details:hover {
             background: var(--ignea-brown) !important;
             color: var(--ignea-dark) !important;
@@ -193,113 +276,239 @@
 
         .modal-overlay {
             position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             background-color: rgba(0, 0, 0, 0.5);
             display: none;
             justify-content: center;
             align-items: center;
             z-index: 1000;
         }
+
         .modal-content {
             background-color: var(--ignea-gray);
             border: 1px solid var(--ignea-brown);
             border-radius: 8px;
             padding: 24px;
-            max-width: 600px; width: 90%;
-            max-height: 80vh; overflow-y: auto;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
         }
+
         /* Modal mais largo no desktop */
         @media (min-width: 992px) {
             .modal-content {
                 max-width: 1000px;
-                width: 95vw; /* não passa da viewport, mas limita a 1000px pelo max-width */
+                width: 95vw;
+                /* não passa da viewport, mas limita a 1000px pelo max-width */
             }
         }
 
         /* Scroll interno para tabelas: mostrar no máximo 7 linhas + cabeçalho */
-            :root { --ignea-row-h: 64px; --ignea-head-h: 52px; }
+        :root {
+            --ignea-row-h: 64px;
+            --ignea-head-h: 52px;
+        }
+
         .scroll-table-container {
             max-height: calc(var(--ignea-head-h) + var(--ignea-row-h) * 7);
             overflow-y: auto;
             overflow-x: hidden;
             width: 100%;
         }
-    .scroll-table-container table { width: 100%; table-layout: fixed; border-collapse: collapse; }
-    .scroll-table-container thead th { position: sticky; top: 0; z-index: 2; background-color: var(--ignea-brown); color: var(--ignea-text); }
-    /* Quebra de linha padrão (sem quebrar por caractere) */
-    .scroll-table-container td,
-    .scroll-table-container th {
-        white-space: normal;
-        word-break: normal;
-        overflow-wrap: normal;
-    }
-    /* Deixe o wrapper padrão do Bootstrap gerenciar o scroll horizontal no mobile (configurado no @media) */
-    /* Centralização vertical das células para alinhar o botão de detalhes */
-    .ignea-table td { vertical-align: middle; }
-    /* Centralizar o botão de detalhes na célula (sem flex para evitar scroll interno) */
-    #tab-resultado table tbody td:nth-child(5),
-    #tab-historico table tbody td:nth-child(6) {
-        text-align: center;
-        vertical-align: middle;
-        padding: 0;
-        overflow: visible !important;
-        white-space: normal !important;
-        word-break: normal;
-        max-width: 120px;
-    }
-    /* Tamanho de fonte dentro da tabela */
-    .ignea-table th, .ignea-table td { font-size: 14px; }
 
-    /* Remover bordas brancas das células */
-    .ignea-table table, .ignea-table th, .ignea-table td { border: none !important; }
-    .ignea-table .table-dark> :not(caption) > * > * { border-bottom-width: 0 !important; }
-    .ignea-table .table-dark thead th, .ignea-table .table-dark thead tr { border-top: 0 !important; }
-    .ignea-table .table-dark { --bs-table-border-color: transparent; }
-    /* Forçar fundo cinza nas células do corpo da tabela, mantendo o cabeçalho marrom */
-    .ignea-table .table-dark tbody td,
-    .ignea-table .table-dark tbody th { background-color: var(--ignea-gray) !important; }
-    /* Cabeçalho marrom (tom do site) */
-    .ignea-table .table-dark thead th { background-color: var(--ignea-brown) !important; color: var(--ignea-text) !important; }
-    .ignea-table .table-dark tbody tr:hover td,
-    .ignea-table .table-dark tbody tr:hover th { background-color: var(--ignea-border) !important; }
+        .scroll-table-container table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+        }
 
-    /* Larguras fixas de colunas */
-    /* Resultado: Processo(1) 200px, CNPJ(2) 200px, Email(4) 300px, Detalhes(5) 120px */
-    #tab-resultado table thead th:nth-child(1),
-    #tab-resultado table tbody td:nth-child(1) { width: 200px; min-width: 200px; max-width: 200px; }
-    #tab-resultado table thead th:nth-child(2),
-    #tab-resultado table tbody td:nth-child(2) { width: 200px; min-width: 200px; max-width: 200px; }
-    #tab-resultado table thead th:nth-child(4),
-    #tab-resultado table tbody td:nth-child(4) { width: 300px; min-width: 300px; max-width: 300px; }
-    #tab-resultado table thead th:nth-child(5),
-    #tab-resultado table tbody td:nth-child(5) { width: 120px; min-width: 120px; max-width: 120px; text-align: center; }
+        .scroll-table-container thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background-color: var(--ignea-brown);
+            color: var(--ignea-text);
+        }
 
-    /* Histórico: Data(1) 120px, Processo(2) 200px, CNPJ(3) 200px, Email(5) 300px, Detalhes(6) 120px */
-    #tab-historico table thead th:nth-child(1),
-    #tab-historico table tbody td:nth-child(1) { width: 120px; min-width: 120px; max-width: 120px; }
-    #tab-historico table thead th:nth-child(2),
-    #tab-historico table tbody td:nth-child(2) { width: 200px; min-width: 200px; max-width: 200px; }
-    #tab-historico table thead th:nth-child(3),
-    #tab-historico table tbody td:nth-child(3) { width: 200px; min-width: 200px; max-width: 200px; }
-    #tab-historico table thead th:nth-child(5),
-    #tab-historico table tbody td:nth-child(5) { width: 300px; min-width: 300px; max-width: 300px; }
-    #tab-historico table thead th:nth-child(6),
-    #tab-historico table tbody td:nth-child(6) { width: 120px; min-width: 120px; max-width: 120px; text-align: center; }
+        /* Quebra de linha padrão (sem quebrar por caractere) */
+        .scroll-table-container td,
+        .scroll-table-container th {
+            white-space: normal;
+            word-break: normal;
+            overflow-wrap: normal;
+        }
+
+        /* Deixe o wrapper padrão do Bootstrap gerenciar o scroll horizontal no mobile (configurado no @media) */
+        /* Centralização vertical das células para alinhar o botão de detalhes */
+        .ignea-table td {
+            vertical-align: middle;
+        }
+
+        /* Centralizar o botão de detalhes na célula (sem flex para evitar scroll interno) */
+        #tab-resultado table tbody td:nth-child(5),
+        #tab-historico table tbody td:nth-child(6) {
+            text-align: center;
+            vertical-align: middle;
+            padding: 0;
+            overflow: visible !important;
+            white-space: normal !important;
+            word-break: normal;
+            max-width: 120px;
+        }
+
+        /* Tamanho de fonte dentro da tabela */
+        .ignea-table th,
+        .ignea-table td {
+            font-size: 14px;
+        }
+
+        /* Remover bordas brancas das células */
+        .ignea-table table,
+        .ignea-table th,
+        .ignea-table td {
+            border: none !important;
+        }
+
+        .ignea-table .table-dark> :not(caption)>*>* {
+            border-bottom-width: 0 !important;
+        }
+
+        .ignea-table .table-dark thead th,
+        .ignea-table .table-dark thead tr {
+            border-top: 0 !important;
+        }
+
+        .ignea-table .table-dark {
+            --bs-table-border-color: transparent;
+        }
+
+        /* Forçar fundo cinza nas células do corpo da tabela, mantendo o cabeçalho marrom */
+        .ignea-table .table-dark tbody td,
+        .ignea-table .table-dark tbody th {
+            background-color: var(--ignea-gray) !important;
+        }
+
+        /* Cabeçalho marrom (tom do site) */
+        .ignea-table .table-dark thead th {
+            background-color: var(--ignea-brown) !important;
+            color: var(--ignea-text) !important;
+        }
+
+        .ignea-table .table-dark tbody tr:hover td,
+        .ignea-table .table-dark tbody tr:hover th {
+            background-color: var(--ignea-border) !important;
+        }
+
+        /* Larguras fixas de colunas */
+        /* Resultado: Processo(1) 200px, CNPJ(2) 200px, Email(4) 300px, Detalhes(5) 120px */
+        #tab-resultado table thead th:nth-child(1),
+        #tab-resultado table tbody td:nth-child(1) {
+            width: 200px;
+            min-width: 200px;
+            max-width: 200px;
+        }
+
+        #tab-resultado table thead th:nth-child(2),
+        #tab-resultado table tbody td:nth-child(2) {
+            width: 200px;
+            min-width: 200px;
+            max-width: 200px;
+        }
+
+        #tab-resultado table thead th:nth-child(4),
+        #tab-resultado table tbody td:nth-child(4) {
+            width: 300px;
+            min-width: 300px;
+            max-width: 300px;
+        }
+
+        #tab-resultado table thead th:nth-child(5),
+        #tab-resultado table tbody td:nth-child(5) {
+            width: 120px;
+            min-width: 120px;
+            max-width: 120px;
+            text-align: center;
+        }
+
+        /* Histórico: Data(1) 120px, Processo(2) 200px, CNPJ(3) 200px, Email(5) 300px, Detalhes(6) 120px */
+        #tab-historico table thead th:nth-child(1),
+        #tab-historico table tbody td:nth-child(1) {
+            width: 120px;
+            min-width: 120px;
+            max-width: 120px;
+        }
+
+        #tab-historico table thead th:nth-child(2),
+        #tab-historico table tbody td:nth-child(2) {
+            width: 200px;
+            min-width: 200px;
+            max-width: 200px;
+        }
+
+        #tab-historico table thead th:nth-child(3),
+        #tab-historico table tbody td:nth-child(3) {
+            width: 200px;
+            min-width: 200px;
+            max-width: 200px;
+        }
+
+        #tab-historico table thead th:nth-child(5),
+        #tab-historico table tbody td:nth-child(5) {
+            width: 300px;
+            min-width: 300px;
+            max-width: 300px;
+        }
+
+        #tab-historico table thead th:nth-child(6),
+        #tab-historico table tbody td:nth-child(6) {
+            width: 120px;
+            min-width: 120px;
+            max-width: 120px;
+            text-align: center;
+        }
 
         @media (max-width: 768px) {
-            .ignea-container { padding: 16px; margin: 8px 0; }
-            .ignea-logo img { max-height: 80px; }
-            .search-input-wide { min-width: 200px; width: 100%; }
+            .ignea-container {
+                padding: 16px;
+                margin: 8px 0;
+            }
+
+            .ignea-logo img {
+                max-height: 80px;
+            }
+
+            .search-input-wide {
+                min-width: 200px;
+                width: 100%;
+            }
+
             /* No mobile, permitir scroll horizontal na tabela inteira (cabeçalho e linhas) */
             /* O wrapper do Bootstrap faz o scroll horizontal */
             #tab-resultado.table-responsive,
-            #tab-historico.table-responsive { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+            #tab-historico.table-responsive {
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch;
+            }
+
             /* O container interno cuida apenas do scroll vertical */
-            .scroll-table-container { overflow-x: visible !important; }
+            .scroll-table-container {
+                overflow-x: visible !important;
+            }
+
             /* Garantir que o invólucro externo não bloqueie o overflow-x */
-            .ignea-table { overflow-x: visible; }
-            .scroll-table-container table { min-width: 1100px; table-layout: auto; }
+            .ignea-table {
+                overflow-x: visible;
+            }
+
+            .scroll-table-container table {
+                min-width: 1100px;
+                table-layout: auto;
+            }
+
             /* Mantém tokens sem espaços numa linha só (evita 1 char/linha) */
             /* Resultado: Processo(1), CNPJ(2), Email(4) */
             #tab-resultado table th:nth-child(1),
@@ -307,7 +516,10 @@
             #tab-resultado table th:nth-child(2),
             #tab-resultado table td:nth-child(2),
             #tab-resultado table th:nth-child(4),
-            #tab-resultado table td:nth-child(4) { white-space: nowrap; }
+            #tab-resultado table td:nth-child(4) {
+                white-space: nowrap;
+            }
+
             /* Histórico: Data(1), Processo(2), CNPJ(3), Email(5) */
             #tab-historico table th:nth-child(1),
             #tab-historico table td:nth-child(1),
@@ -316,7 +528,10 @@
             #tab-historico table th:nth-child(3),
             #tab-historico table td:nth-child(3),
             #tab-historico table th:nth-child(5),
-            #tab-historico table td:nth-child(5) { white-space: nowrap; }
+            #tab-historico table td:nth-child(5) {
+                white-space: nowrap;
+            }
+
             /* Nome pode quebrar normalmente */
             #tab-resultado table th:nth-child(3),
             #tab-resultado table td:nth-child(3),
@@ -330,29 +545,54 @@
 
         /* Regras responsivas para telas abaixo de 1200px: evitar sobreposição e reduzir larguras */
         @media (max-width: 1199.98px) {
+
             /* Habilita scroll horizontal no wrapper responsivo também em tablets/monitores menores */
             #tab-resultado.table-responsive,
-            #tab-historico.table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-            .scroll-table-container { overflow-x: visible; }
+            #tab-historico.table-responsive {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .scroll-table-container {
+                overflow-x: visible;
+            }
+
             /* Largura mínima suficiente para evitar colunas se comprimirem demais */
-            #tab-historico .scroll-table-container table { min-width: 1140px; table-layout: auto; }
-            #tab-resultado .scroll-table-container table { min-width: 1040px; table-layout: auto; }
+            #tab-historico .scroll-table-container table {
+                min-width: 1140px;
+                table-layout: auto;
+            }
+
+            #tab-resultado .scroll-table-container table {
+                min-width: 1040px;
+                table-layout: auto;
+            }
 
             /* Resultado: Processo(1) e CNPJ(2) reduzem para 150px */
             #tab-resultado table thead th:nth-child(1),
             #tab-resultado table tbody td:nth-child(1),
             #tab-resultado table thead th:nth-child(2),
-            #tab-resultado table tbody td:nth-child(2) { width: 150px; min-width: 150px; max-width: 150px; }
+            #tab-resultado table tbody td:nth-child(2) {
+                width: 150px;
+                min-width: 150px;
+                max-width: 150px;
+            }
 
             /* Histórico: Processo(2) e CNPJ(3) reduzem para 150px */
             #tab-historico table thead th:nth-child(2),
             #tab-historico table tbody td:nth-child(2),
             #tab-historico table thead th:nth-child(3),
-            #tab-historico table tbody td:nth-child(3) { width: 150px; min-width: 150px; max-width: 150px; }
+            #tab-historico table tbody td:nth-child(3) {
+                width: 150px;
+                min-width: 150px;
+                max-width: 150px;
+            }
 
             /* Garante um espaço mínimo para Nome no histórico para não "invadir" o E-mail */
             #tab-historico table thead th:nth-child(4),
-            #tab-historico table tbody td:nth-child(4) { min-width: 260px; }
+            #tab-historico table tbody td:nth-child(4) {
+                min-width: 260px;
+            }
         }
 
         /* Fora do mobile, também garantir que a coluna Nome não quebre por caractere */
@@ -364,39 +604,71 @@
             word-break: normal;
             overflow-wrap: normal;
         }
+
+        /* Logout button styles */
+        #btn-logout {
+            color: var(--ignea-muted);
+        }
+
+        #btn-logout:hover {
+            color: var(--ignea-text);
+        }
+
+        #btn-logout i {
+            font-size: 18px;
+            transform: scaleX(-1);
+            display: inline-block;
+        }
     </style>
 </head>
+
 <body>
     <div class="container-fluid">
+        <!-- Botão de logout com Font Awesome, invertido (seta para a esquerda) -->
+        <a href="{% url 'logout' %}" id="btn-logout" title="Sair"
+            style="position: absolute; top: 18px; left: 18px; z-index: 2000; background: none; border: none; padding: 0; cursor: pointer;">
+            <i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i>
+            <span class="visually-hidden">Sair</span>
+        </a>
         <div class="ignea-logo">
-            <img src="{% static 'img/Logo.png' %}" alt="Logo IGNEA" class="logo-img">
+            <img src="{% static 'img/Logo3.png' %}" alt="Logo IGNEA" class="logo-img">
         </div>
 
         <div class="container">
             <div class="ignea-container">
-                <button type="button" id="btn-toggle-card" class="toggle-card-btn" aria-label="Recolher/expandir formulário" title="Recolher/expandir formulário">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <button type="button" id="btn-toggle-card" class="toggle-card-btn"
+                    aria-label="Recolher/expandir formulário" title="Recolher/expandir formulário">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        aria-hidden="true">
                         <polyline points="6 15 12 9 18 15"></polyline>
                     </svg>
                 </button>
                 <!-- Botão/aba exigido pelo JS legado; mantido oculto -->
                 <button type="button" id="btn-aba-consulta" style="display:none;">Consulta</button>
                 <form method="post" enctype="multipart/form-data" id="consultaForm">
-                    <div id="status-indicator" style="display:none; color:#d32f2f; font-weight:bold; margin-bottom:1rem;"></div>
+                    <div id="status-indicator"
+                        style="display:none; color:#d32f2f; font-weight:bold; margin-bottom:1rem;"></div>
                     {% if error_msg %}
-                        <div style="color:#d32f2f; margin-bottom:1rem;">{{ error_msg }}</div>
+                    <div style="color:#d32f2f; margin-bottom:1rem;">{{ error_msg }}</div>
                     {% endif %}
                     {% csrf_token %}
 
                     <div id="aba-consulta">
                         <div class="mb-3">
-                            <label for="cnpjs" class="form-label" style="color:var(--ignea-muted); font-weight:600;">CNPJ(s)</label>
-                            <input id="cnpjs" name="cnpjs" type="text" placeholder="Digite um ou mais CNPJs, separados por vírgula" class="ignea-input" pattern="[0-9,\s-\/]*" title="Apenas números, vírgulas, traços, barras e espaços são permitidos">
+                            <label for="cnpjs" class="form-label"
+                                style="color:var(--ignea-muted); font-weight:600;">CNPJ(s)</label>
+                            <input id="cnpjs" name="cnpjs" type="text"
+                                placeholder="Digite um ou mais CNPJs, separados por vírgula" class="ignea-input"
+                                pattern="[0-9,\s-\/]*"
+                                title="Apenas números, vírgulas, traços, barras e espaços são permitidos">
                         </div>
 
                         <div class="mb-3">
-                            <label for="csv_file" class="form-label" style="color:var(--ignea-muted); font-weight:600;">Envie um arquivo CSV/XLSX</label>
-                            <input id="csv_file" name="csv_file" type="file" accept=".csv,.xlsx" class="ignea-file-input">
+                            <label for="csv_file" class="form-label"
+                                style="color:var(--ignea-muted); font-weight:600;">Envie um arquivo CSV/XLSX</label>
+                            <input id="csv_file" name="csv_file" type="file" accept=".csv,.xlsx"
+                                class="ignea-file-input">
                             <div class="file-label">Selecionar arquivo</div>
                         </div>
                     </div>
@@ -405,13 +677,18 @@
 
                     <div id="actions-bar" class="actions-bar d-flex align-items-center gap-2 flex-wrap actions-row">
                         <button type="submit" id="btn-buscar" class="ignea-button btn-action-fixed">Buscar</button>
-                        <button type="button" id="btn-pausar" class="ignea-button btn-action-fixed" style="display:none; border-color: var(--ignea-brown); color: var(--ignea-text);">Pausar</button>
-                        <button type="button" id="btn-retomar" class="ignea-button btn-action-fixed" style="display:none; border-color: var(--ignea-brown); color: var(--ignea-text);">Retomar</button>
-                        <button type="button" id="btn-cancelar" class="ignea-button btn-action-fixed" style="display:none; border-color: var(--ignea-brown); color: var(--ignea-text);">Cancelar</button>
-                        <div id="progress-indicator" class="ms-2" style="font-weight:bold; color: var(--ignea-brown);"></div>
+                        <button type="button" id="btn-pausar" class="ignea-button btn-action-fixed"
+                            style="display:none; border-color: var(--ignea-brown); color: var(--ignea-text);">Pausar</button>
+                        <button type="button" id="btn-retomar" class="ignea-button btn-action-fixed"
+                            style="display:none; border-color: var(--ignea-brown); color: var(--ignea-text);">Retomar</button>
+                        <button type="button" id="btn-cancelar" class="ignea-button btn-action-fixed"
+                            style="display:none; border-color: var(--ignea-brown); color: var(--ignea-text);">Cancelar</button>
+                        <div id="progress-indicator" class="ms-2" style="font-weight:bold; color: var(--ignea-brown);">
+                        </div>
                     </div>
                 </form>
-                <div id="credits-inline" style="margin-top:10px; font-size:12px; color:var(--ignea-muted); text-align:left;">
+                <div id="credits-inline"
+                    style="margin-top:10px; font-size:12px; color:var(--ignea-muted); text-align:left;">
                     Créditos: <span id="credits-inline-content">Carregando...</span>
                 </div>
             </div>
@@ -424,46 +701,69 @@
             <div class="ignea-table">
                 <!-- Resultado: header de filtros e exportações -->
                 <div id="tab-resultado" class="table-responsive">
-                    <div class="p-3 d-flex align-items-center gap-2 flex-wrap" style="border-color: var(--ignea-border);">
-                        <label for="res-search-field" class="me-1" style="margin:0; font-weight:500; color:var(--ignea-muted);">Filtrar por</label>
+                    <div class="p-3 d-flex align-items-center gap-2 flex-wrap"
+                        style="border-color: var(--ignea-border);">
+                        <label for="res-search-field" class="me-1"
+                            style="margin:0; font-weight:500; color:var(--ignea-muted);">Filtrar por</label>
                         <select id="res-search-field" class="ignea-select">
                             <option value="processo">Processo</option>
                             <option value="cnpj" selected>CNPJ</option>
                             <option value="nome">Nome</option>
                             <option value="email">E-mail</option>
                         </select>
-                        <input id="res-search-input" type="text" placeholder="Digite para filtrar..." class="ignea-input search-input-wide">
+                        <input id="res-search-input" type="text" placeholder="Digite para filtrar..."
+                            class="ignea-input search-input-wide">
                         <span id="res-count" style="font-size:12px; color:var(--ignea-muted);">—</span>
                         <div class="ms-auto d-flex gap-2">
-                            <a href="{% url 'export_resultado_csv' %}" class="ignea-button btn-icon-only" title="Exportar CSV" aria-label="Exportar CSV">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            <a href="{% url 'export_resultado_csv' %}" class="ignea-button btn-icon-only"
+                                title="Exportar CSV" aria-label="Exportar CSV">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <polyline points="7 10 12 15 17 10" />
+                                    <line x1="12" y1="15" x2="12" y2="3" />
+                                </svg>
                             </a>
-                            <a href="{% url 'export_resultado_xlsx' %}" class="ignea-button btn-icon-only" title="Exportar XLSX" aria-label="Exportar XLSX">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l3-3 3 3"/><path d="M12 12v6"/></svg>
+                            <a href="{% url 'export_resultado_xlsx' %}" class="ignea-button btn-icon-only"
+                                title="Exportar XLSX" aria-label="Exportar XLSX">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                    <polyline points="14 2 14 8 20 8" />
+                                    <path d="M9 15l3-3 3 3" />
+                                    <path d="M12 12v6" />
+                                </svg>
                             </a>
                         </div>
                     </div>
                     <div class="scroll-table-container">
-                    <table class="table table-dark mb-0">
-                        <thead class="ignea-table-header">
-                            <tr>
-                                <th class="p-3">Processo</th>
-                                <th class="p-3">CNPJ</th>
-                                <th class="p-3">Nome da empresa</th>
-                                <th class="p-3">E-mail da empresa</th>
-                                <th class="p-3" style="text-align:center;">Detalhes</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for r in resultados %}
+                        <table class="table table-dark mb-0">
+                            <thead class="ignea-table-header">
+                                <tr>
+                                    <th class="p-3">Processo</th>
+                                    <th class="p-3">CNPJ</th>
+                                    <th class="p-3">Nome da empresa</th>
+                                    <th class="p-3">E-mail da empresa</th>
+                                    <th class="p-3" style="text-align:center;">Detalhes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for r in resultados %}
                                 <tr class="ignea-table-row">
                                     <td class="p-3">{{ r.processo }}</td>
                                     <td class="p-3">{{ r.cnpj }}</td>
                                     <td class="p-3">{{ r.nome }}</td>
-                                    <td class="p-3">{% if r.email and r.email != '-' %}{{ r.email }}{% else %}Sem e-mail{% endif %}</td>
+                                    <td class="p-3">{% if r.email and r.email != '-' %}{{ r.email }}{% else %}Sem
+                                        e-mail{% endif %}</td>
                                     <td class="p-3" style="text-align:center;">
-                                        <button class="btn-icon btn-details" data-cnpj="{{ r.cnpj }}" title="Ver detalhes" style="background:transparent; border:1px solid var(--ignea-brown); border-radius:6px; width:28px; height:28px; display:inline-grid; place-items:center; color:var(--ignea-text);">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <button class="btn-icon btn-details" data-cnpj="{{ r.cnpj }}"
+                                            title="Ver detalhes"
+                                            style="background:transparent; border:1px solid var(--ignea-brown); border-radius:6px; width:28px; height:28px; display:inline-grid; place-items:center; color:var(--ignea-text);">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
                                                 <rect x="3" y="3" width="18" height="18" rx="3" ry="3"></rect>
                                                 <line x1="12" y1="10" x2="12" y2="16"></line>
                                                 <line x1="12" y1="7" x2="12.01" y2="7"></line>
@@ -471,31 +771,39 @@
                                         </button>
                                     </td>
                                 </tr>
-                            {% empty %}
-                                <tr><td colspan="5" class="p-3" style="text-align:center; color:#c0c0c0;">Nenhum resultado para exibir.</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="p-3" style="text-align:center; color:#c0c0c0;">Nenhum
+                                        resultado para exibir.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
                 <!-- Histórico: header de filtros e exportações -->
                 <div id="tab-historico" class="table-responsive" style="display:none;">
                     <div class="p-3 d-flex align-items-center gap-2 flex-wrap" style="border-color: #8b7355;">
-                        <label for="his-search-field" class="me-1" style="margin:0; font-weight:500; color:var(--ignea-muted);">Filtrar por</label>
+                        <label for="his-search-field" class="me-1"
+                            style="margin:0; font-weight:500; color:var(--ignea-muted);">Filtrar por</label>
                         <select id="his-search-field" class="ignea-select">
                             <option value="processo">Processo</option>
                             <option value="cnpj" selected>CNPJ</option>
                             <option value="nome">Nome</option>
                             <option value="email">E-mail</option>
                         </select>
-                        <input id="his-search-input" type="text" placeholder="Digite para filtrar..." class="ignea-input search-input-wide">
+                        <input id="his-search-input" type="text" placeholder="Digite para filtrar..."
+                            class="ignea-input search-input-wide">
                         <span id="his-count" style="font-size:12px; color:var(--ignea-muted);">—</span>
                         <form id="form-limpar-historico" method="post" style="display:none; margin:0;">
                             {% csrf_token %}
                             <input type="hidden" name="limpar_historico" value="1">
-                            <button type="submit" class="ignea-button btn-icon-only btn-danger-outline" title="Limpar histórico" aria-label="Limpar histórico">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <button type="submit" class="ignea-button btn-icon-only btn-danger-outline"
+                                title="Limpar histórico" aria-label="Limpar histórico">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
                                     <polyline points="3 6 5 6 21 6"></polyline>
                                     <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
                                     <path d="M10 11v6"></path>
@@ -505,53 +813,76 @@
                             </button>
                         </form>
                         <div class="ms-auto d-flex gap-2">
-                            <a href="{% url 'export_historico_csv' %}" class="ignea-button btn-icon-only" title="Exportar CSV" aria-label="Exportar CSV">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            <a href="{% url 'export_historico_csv' %}" class="ignea-button btn-icon-only"
+                                title="Exportar CSV" aria-label="Exportar CSV">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <polyline points="7 10 12 15 17 10" />
+                                    <line x1="12" y1="15" x2="12" y2="3" />
+                                </svg>
                             </a>
-                            <a href="{% url 'export_historico_xlsx' %}" class="ignea-button btn-icon-only" title="Exportar XLSX" aria-label="Exportar XLSX">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l3-3 3 3"/><path d="M12 12v6"/></svg>
+                            <a href="{% url 'export_historico_xlsx' %}" class="ignea-button btn-icon-only"
+                                title="Exportar XLSX" aria-label="Exportar XLSX">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                    <polyline points="14 2 14 8 20 8" />
+                                    <path d="M9 15l3-3 3 3" />
+                                    <path d="M12 12v6" />
+                                </svg>
                             </a>
                         </div>
                     </div>
                     <div class="scroll-table-container">
-                    <table class="table table-dark mb-0">
-                        <thead class="ignea-table-header">
-                            <tr>
-                                <th class="p-3">Data</th>
-                                <th class="p-3">Processo</th>
-                                <th class="p-3">CNPJ</th>
-                                <th class="p-3">Nome</th>
-                                <th class="p-3">E-mail</th>
-                                <th class="p-3" style="text-align:center;">Detalhes</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% if historico %}
+                        <table class="table table-dark mb-0">
+                            <thead class="ignea-table-header">
+                                <tr>
+                                    <th class="p-3">Data</th>
+                                    <th class="p-3">Processo</th>
+                                    <th class="p-3">CNPJ</th>
+                                    <th class="p-3">Nome</th>
+                                    <th class="p-3">E-mail</th>
+                                    <th class="p-3" style="text-align:center;">Detalhes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if historico %}
                                 {% for h in historico %}
-                                    {% for item in h.resultado %}
-                                        <tr class="ignea-table-row">
-                                            <td class="p-3">{{ h.data|date:"d/m/y" }}</td>
-                                            <td class="p-3">{{ item.processo }}</td>
-                                            <td class="p-3">{{ item.cnpj }}</td>
-                                            <td class="p-3">{{ item.nome }}</td>
-                                            <td class="p-3">{% if item.email and item.email != '-' %}{{ item.email }}{% else %}Sem e-mail{% endif %}</td>
-                                            <td class="p-3" style="text-align:center;">
-                                                <button class="btn-icon btn-details" data-cnpj="{{ item.cnpj }}" title="Ver detalhes" style="background:transparent; border:1px solid var(--ignea-brown); border-radius:6px; width:28px; height:28px; display:inline-grid; place-items:center; color:var(--ignea-text);">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                        <rect x="3" y="3" width="18" height="18" rx="3" ry="3"></rect>
-                                                        <line x1="12" y1="10" x2="12" y2="16"></line>
-                                                        <line x1="12" y1="7" x2="12.01" y2="7"></line>
-                                                    </svg>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    {% endfor %}
+                                {% for item in h.resultado %}
+                                <tr class="ignea-table-row">
+                                    <td class="p-3">{{ h.data|date:"d/m/y" }}</td>
+                                    <td class="p-3">{{ item.processo }}</td>
+                                    <td class="p-3">{{ item.cnpj }}</td>
+                                    <td class="p-3">{{ item.nome }}</td>
+                                    <td class="p-3">{% if item.email and item.email != '-' %}{{ item.email }}{% else
+                                        %}Sem e-mail{% endif %}</td>
+                                    <td class="p-3" style="text-align:center;">
+                                        <button class="btn-icon btn-details" data-cnpj="{{ item.cnpj }}"
+                                            title="Ver detalhes"
+                                            style="background:transparent; border:1px solid var(--ignea-brown); border-radius:6px; width:28px; height:28px; display:inline-grid; place-items:center; color:var(--ignea-text);">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <rect x="3" y="3" width="18" height="18" rx="3" ry="3"></rect>
+                                                <line x1="12" y1="10" x2="12" y2="16"></line>
+                                                <line x1="12" y1="7" x2="12.01" y2="7"></line>
+                                            </svg>
+                                        </button>
+                                    </td>
+                                </tr>
                                 {% endfor %}
-                            {% else %}
-                                <tr><td colspan="6" class="p-3" style="text-align:center; color:#c0c0c0;">Nenhum histórico encontrado.</td></tr>
-                            {% endif %}
-                        </tbody>
-                    </table>
+                                {% endfor %}
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="p-3" style="text-align:center; color:#c0c0c0;">Nenhum
+                                        histórico encontrado.</td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
@@ -561,7 +892,8 @@
 
     <!-- Modal genérico; o JS dos arquivos static controla a abertura/fechamento e o conteúdo -->
     <div id="details-modal" class="modal-overlay" aria-hidden="true">
-        <div id="details-body-container" class="modal-content" role="dialog" aria-modal="true" aria-labelledby="details-title">
+        <div id="details-body-container" class="modal-content" role="dialog" aria-modal="true"
+            aria-labelledby="details-title">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2 id="details-title">Detalhes da Empresa</h2>
                 <button id="modal-close" class="ignea-button">Fechar</button>
@@ -575,5 +907,5 @@
     <!-- Removido todo JS inline. O comportamento é carregado via arquivos em static. -->
     <script src="{% static 'js/home.js' %}" defer></script>
 </body>
-</html>
 
+</html>
