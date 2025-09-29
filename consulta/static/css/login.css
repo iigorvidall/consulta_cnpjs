@@ -2,11 +2,12 @@
 body {
     font-family: 'Inter', sans-serif;
     /* Fundo com imagem + overlay preto 60% */
-    background:
-        linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)),
-        url('/static/img/background.png') no-repeat center center;
-    background-size: cover; /* cobre a viewport sem esticar demais */
-    background-color: #0f0f0f; /* fallback rápido enquanto a imagem carrega */
+    background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)),
+    url("{% static 'img/background.png' %}") !important;
+    background-size: cover;
+    /* cobre a viewport sem esticar demais */
+    background-color: #0f0f0f;
+    /* fallback rápido enquanto a imagem carrega */
     min-height: 100vh;
     display: flex;
     align-items: center;
@@ -21,7 +22,7 @@ body {
     padding: 48px 40px;
     width: 100%;
     max-width: 440px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     position: relative;
     overflow: hidden;
 }
@@ -50,29 +51,123 @@ body {
     opacity: 0.3;
 }
 
-.logo-container { text-align: center; margin-bottom: 40px; }
-.logo { display: inline-flex; align-items: center; gap: 12px; font-size: 28px; font-weight: 600; color: #1e1e1e; text-decoration: none; width: 237px; height: 62px; }
-.logo-img { width: 237px !important; height: 62px; border-radius: 8px; object-fit: cover; margin-right: 12px; }
+.logo-container {
+    text-align: center;
+    margin-bottom: 40px;
+}
 
-.form-control { border: 1px solid #e9edf4; border-radius: 8px; padding: 16px; font-size: 16px; background: #fcfdfe; transition: all 0.2s ease; margin-bottom: 20px; }
-.form-control::placeholder { color: #b0b3b8; opacity: 0.7; font-size: 15px; font-weight: 400; letter-spacing: 0.2px; }
-.form-control:focus { border-color: #a78b6b; box-shadow: 0 0 0 3px rgba(167, 139, 107, 0.18); background: #ffffff; }
+.logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 28px;
+    font-weight: 600;
+    color: #1e1e1e;
+    text-decoration: none;
+    width: 237px;
+    height: 62px;
+}
 
-.btn-login { background: #1e1e1e; color: white; border: none; border-radius: 8px; padding: 16px; font-size: 16px; font-weight: 500; width: 100%; transition: all 0.2s ease; margin-bottom: 24px; }
-.btn-login:hover { background: #2a2a2a; transform: translateY(-1px); }
+.logo-img {
+    width: 237px !important;
+    height: 62px;
+    border-radius: 8px;
+    object-fit: cover;
+    margin-right: 12px;
+}
+
+.form-control {
+    border: 1px solid #e9edf4;
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 16px;
+    background: #fcfdfe;
+    transition: all 0.2s ease;
+    margin-bottom: 20px;
+}
+
+.form-control::placeholder {
+    color: #b0b3b8;
+    opacity: 0.7;
+    font-size: 15px;
+    font-weight: 400;
+    letter-spacing: 0.2px;
+}
+
+.form-control:focus {
+    border-color: #a78b6b;
+    box-shadow: 0 0 0 3px rgba(167, 139, 107, 0.18);
+    background: #ffffff;
+}
+
+.btn-login {
+    background: #1e1e1e;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 16px;
+    font-weight: 500;
+    width: 100%;
+    transition: all 0.2s ease;
+    margin-bottom: 24px;
+}
+
+.btn-login:hover {
+    background: #2a2a2a;
+    transform: translateY(-1px);
+}
 
 /* bloco de link de signup removido (uso interno) */
 
-.error-list { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin-bottom: 24px; list-style: none; }
-.error-list li { color: #dc2626; font-size: 14px; margin-bottom: 4px; }
-.error-list li:last-child { margin-bottom: 0; }
+.error-list {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 24px;
+    list-style: none;
+}
+
+.error-list li {
+    color: #dc2626;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.error-list li:last-child {
+    margin-bottom: 0;
+}
 
 @media (max-width: 576px) {
-    .login-card { padding: 32px 24px; margin: 16px; }
-    .logo { font-size: 24px; }
-    .form-control { padding: 14px; font-size: 14px; }
-    .btn-login { padding: 14px; font-size: 14px; }
-    .signup-link { font-size: 12px; }
-    .error-list { padding: 12px; }
-    .error-list li { font-size: 12px; }
+    .login-card {
+        padding: 32px 24px;
+        margin: 16px;
+    }
+
+    .logo {
+        font-size: 24px;
+    }
+
+    .form-control {
+        padding: 14px;
+        font-size: 14px;
+    }
+
+    .btn-login {
+        padding: 14px;
+        font-size: 14px;
+    }
+
+    .signup-link {
+        font-size: 12px;
+    }
+
+    .error-list {
+        padding: 12px;
+    }
+
+    .error-list li {
+        font-size: 12px;
+    }
 }
