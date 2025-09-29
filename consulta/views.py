@@ -33,6 +33,7 @@ from django.shortcuts import redirect
 from django.utils import timezone
 from .forms import ConsultaForm  # existing
 from .forms import LoginForm
+from .forms import SignupForm
 from rest_framework.permissions import IsAuthenticated
 from django.conf import settings
 import os
@@ -594,3 +595,25 @@ def logout_view(request):
 
 
 # signup desabilitado para uso interno (sem rota pública)
+def signup_view(request):
+	"""Tela de cadastro de usuário normal com validação server-side.
+
+	- Usa SignupForm (valida unicidade e senha via validadores do Django)
+	- Se SIGNUP_ENABLED=False em settings, redireciona para login
+	- Em sucesso, autentica o novo usuário e redireciona para home
+	"""
+	if request.user.is_authenticated:
+		return redirect('home')
+	if not getattr(settings, 'SIGNUP_ENABLED', True):
+		messages.error(request, 'Cadastro desabilitado no momento.')
+		return redirect('login')
+	form = SignupForm(request.POST or None)
+	if request.method == 'POST':
+		if form.is_valid():
+			user = form.save()
+			auth_login(request, user)
+			messages.success(request, 'Conta criada com sucesso!')
+			return redirect('home')
+		else:
+			messages.error(request, 'Verifique os campos do formulário.')
+	return render(request, 'auth/signup.html', {'form': form})
