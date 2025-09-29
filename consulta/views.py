@@ -5,7 +5,7 @@ Este módulo contém:
 - Endpoints de exportação de resultados/histórico (CSV/XLSX) baseados em sessão ou banco.
 - Endpoints auxiliares (créditos, detalhes por CNPJ) com cache e fallback.
 - Um fluxo de processamento em lote baseado em sessão (jobs_* via polling).
-- Autenticação (login/logout/signup) com mitigação de brute force via cache.
+- Autenticação (login/logout) com mitigação de brute force via cache.
 """
 
 from django.http import JsonResponse
@@ -593,5 +593,4 @@ def logout_view(request):
 	return redirect('login')
 
 
-# signup desabilitado para uso interno (sem rota pública)
-# signup desabilitado/removido
+# (Cadastro de usuários não disponível neste projeto)

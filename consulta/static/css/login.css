@@ -118,7 +118,7 @@ body {
     transform: translateY(-1px);
 }
 
-/* bloco de link de signup removido (uso interno) */
+/* Sem elementos de cadastro/signup nesta UI */
 
 .error-list {
     background: #fef2f2;
@@ -159,9 +159,7 @@ body {
         font-size: 14px;
     }
 
-    .signup-link {
-        font-size: 12px;
-    }
+    /* .signup-link removido */
 
     .error-list {
         padding: 12px;
