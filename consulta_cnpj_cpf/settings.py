@@ -3,20 +3,27 @@ import os
 from dotenv import load_dotenv
 from datetime import timedelta
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Descobre DEBUG primeiro a partir do ambiente da plataforma (não do .env)
-_DEBUG_ENV = os.getenv('DEBUG', 'False').lower() in ('1','true','yes')
-# Em desenvolvimento local, carregue o .env; em produção (Railway), use apenas variáveis de ambiente da plataforma
-if _DEBUG_ENV:
-    load_dotenv(os.path.join(BASE_DIR, '.env'))
+# Carrega .env se existir (útil para desenvolvimento local). Em produção, normalmente não há .env.
+_env_path = os.path.join(BASE_DIR, '.env')
+if os.path.exists(_env_path):
+    load_dotenv(_env_path)
+
+# Alternância única de ambiente: quando RUN_LOCAL=True, aplica presets de desenvolvimento local
+RUN_LOCAL = os.getenv('RUN_LOCAL', 'False').lower() in ('1','true','yes','local','dev','development')
 
 # Core config
 SECRET_KEY = os.getenv('SECRET_KEY', 'unsafe-default-change-in-prod')
-DEBUG = os.getenv('DEBUG', 'False').lower() in ('1','true','yes')
-ALLOWED_HOSTS = [h for h in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h]
-CSRF_TRUSTED_ORIGINS = [o for o in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if o]
+DEBUG = True if RUN_LOCAL else (os.getenv('DEBUG', 'False').lower() in ('1','true','yes'))
+if RUN_LOCAL:
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '[::1]']
+    CSRF_TRUSTED_ORIGINS = ['http://localhost:8000','http://127.0.0.1:8000','http://[::1]:8000']
+else:
+    ALLOWED_HOSTS = [h for h in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h]
+    CSRF_TRUSTED_ORIGINS = [o for o in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if o]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -63,18 +70,18 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'consulta_cnpj_cpf.wsgi.application'
 
-# Database configuration. Prefer DATABASE_URL if provided by the platform.
-DATABASES = {}
+# Database configuration
+# Prefer DATABASE_URL; otherwise PostgreSQL via POSTGRES_*/PG* vars.
 if os.getenv('DATABASE_URL'):
     DATABASES = {
         'default': dj_database_url.config(
             default=os.getenv('DATABASE_URL'),
             conn_max_age=600,
-            ssl_require=True,
+            ssl_require=not RUN_LOCAL,  # em local não exige SSL
         )
     }
 else:
-    # Check if PostgreSQL environment variables are set
+    # Check PostgreSQL environment variables
     pg_name = os.getenv('PGDATABASE') or os.getenv('POSTGRES_DB')
     pg_user = os.getenv('PGUSER') or os.getenv('POSTGRES_USER')
     pg_password = os.getenv('PGPASSWORD') or os.getenv('POSTGRES_PASSWORD')
@@ -82,7 +89,6 @@ else:
     pg_port = os.getenv('PGPORT') or os.getenv('POSTGRES_PORT') or '5432'
 
     if pg_name and pg_user:
-        # Use PostgreSQL if variables are set
         DATABASES = {
             'default': {
                 'ENGINE': 'django.db.backends.postgresql',
@@ -94,7 +100,11 @@ else:
             }
         }
     else:
-        # Fallback to SQLite for development
+        if RUN_LOCAL:
+            raise ImproperlyConfigured(
+                'RUN_LOCAL=True requer PostgreSQL configurado. Defina DATABASE_URL ou as variáveis POSTGRES_* (POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST, POSTGRES_PORT).'
+            )
+        # Fallback apenas em produção se a plataforma não definir DB
         DATABASES = {
             'default': {
                 'ENGINE': 'django.db.backends.sqlite3',
@@ -157,31 +167,39 @@ AUTHENTICATION_BACKENDS = [
     'axes.backends.AxesBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
-AXES_ENABLED = True
+AXES_ENABLED = False if RUN_LOCAL else True
 AXES_FAILURE_LIMIT = int(os.getenv('AXES_FAILURE_LIMIT', '5'))
 AXES_COOLOFF_TIME = timedelta(minutes=int(os.getenv('AXES_COOLOFF_MINUTES', '15')))
 AXES_RESET_ON_SUCCESS = True
 # Lockout strategy: replicate user+IP+User-Agent combination
 AXES_LOCKOUT_PARAMETERS = ['username', 'ip_address', 'user_agent']
 # If behind a reverse proxy, enable and set header via env to get client IP correctly
-AXES_BEHIND_REVERSE_PROXY = os.getenv('AXES_BEHIND_REVERSE_PROXY', 'False').lower() in ('1','true','yes')
+AXES_BEHIND_REVERSE_PROXY = False if RUN_LOCAL else (os.getenv('AXES_BEHIND_REVERSE_PROXY', 'False').lower() in ('1','true','yes'))
 AXES_REVERSE_PROXY_HEADER = os.getenv('AXES_REVERSE_PROXY_HEADER', 'HTTP_X_FORWARDED_FOR')
 
-# Cache (Redis if REDIS_URL)
-if os.getenv('REDIS_URL'):
-    CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-            'LOCATION': os.getenv('REDIS_URL'),
-        }
-    }
-else:
+# Cache (LocMem in local; Redis if REDIS_URL in prod)
+if RUN_LOCAL:
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
             'LOCATION': 'consulta-cnpj-cache',
         }
     }
+else:
+    if os.getenv('REDIS_URL'):
+        CACHES = {
+            'default': {
+                'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+                'LOCATION': os.getenv('REDIS_URL'),
+            }
+        }
+    else:
+        CACHES = {
+            'default': {
+                'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+                'LOCATION': 'consulta-cnpj-cache',
+            }
+        }
 
 # Auth URLs
 LOGIN_URL = 'login'
@@ -189,7 +207,7 @@ LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'login'
 
 # HTTPS & Security
-SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True').lower() in ('1','true','yes')
+SECURE_SSL_REDIRECT = False if RUN_LOCAL else (os.getenv('SECURE_SSL_REDIRECT', 'True').lower() in ('1','true','yes'))
 # Cookies seguros: em dev (DEBUG=True) desabilita para evitar problemas em HTTP local
 if DEBUG:
     SESSION_COOKIE_SECURE = False
@@ -200,12 +218,12 @@ else:
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '31536000'))
-SECURE_HSTS_INCLUDE_SUBDOMAINS = os.getenv('SECURE_HSTS_INCLUDE_SUBDOMAINS', 'True').lower() in ('1','true','yes')
-SECURE_HSTS_PRELOAD = os.getenv('SECURE_HSTS_PRELOAD', 'True').lower() in ('1','true','yes')
+SECURE_HSTS_SECONDS = 0 if RUN_LOCAL else int(os.getenv('SECURE_HSTS_SECONDS', '31536000'))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False if RUN_LOCAL else (os.getenv('SECURE_HSTS_INCLUDE_SUBDOMAINS', 'True').lower() in ('1','true','yes'))
+SECURE_HSTS_PRELOAD = False if RUN_LOCAL else (os.getenv('SECURE_HSTS_PRELOAD', 'True').lower() in ('1','true','yes'))
 SESSION_COOKIE_SAMESITE = os.getenv('SESSION_COOKIE_SAMESITE', 'Lax')
 CSRF_COOKIE_SAMESITE = os.getenv('CSRF_COOKIE_SAMESITE', 'Lax')
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_PROXY_SSL_HEADER = None if RUN_LOCAL else ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_REFERRER_POLICY = os.getenv('SECURE_REFERRER_POLICY', 'same-origin')
 
 # (Removido) Parâmetros manuais de anti-bruteforce; usamos apenas o Django Axes
