@@ -1,4 +1,5 @@
 {% load static %}
+{% load consulta_extras %}
 <!DOCTYPE html>
 <html lang="pt-BR">
 
@@ -755,8 +756,7 @@
                                     <td class="p-3">{{ r.processo }}</td>
                                     <td class="p-3">{{ r.cnpj }}</td>
                                     <td class="p-3">{{ r.nome }}</td>
-                                    <td class="p-3">{% if r.email and r.email != '-' %}{{ r.email }}{% else %}Sem
-                                        e-mail{% endif %}</td>
+                                    <td class="p-3">{{ r.email|email_or_dash }}</td>
                                     <td class="p-3" style="text-align:center;">
                                         <button class="btn-icon btn-details" data-cnpj="{{ r.cnpj }}"
                                             title="Ver detalhes"
@@ -857,8 +857,7 @@
                                     <td class="p-3">{{ item.processo }}</td>
                                     <td class="p-3">{{ item.cnpj }}</td>
                                     <td class="p-3">{{ item.nome }}</td>
-                                    <td class="p-3">{% if item.email and item.email != '-' %}{{ item.email }}{% else
-                                        %}Sem e-mail{% endif %}</td>
+                                    <td class="p-3">{{ item.email|email_or_dash }}</td>
                                     <td class="p-3" style="text-align:center;">
                                         <button class="btn-icon btn-details" data-cnpj="{{ item.cnpj }}"
                                             title="Ver detalhes"
