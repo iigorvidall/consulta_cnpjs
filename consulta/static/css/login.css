@@ -4,7 +4,7 @@ body {
     /* Fundo com imagem + overlay preto 60% */
     background:
         linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)),
-        url('/static/img/background.png') no-repeat center center fixed;
+        url('/static/img/background.webp') no-repeat center center fixed;
     background-size: cover;
     min-height: 100vh;
     display: flex;
