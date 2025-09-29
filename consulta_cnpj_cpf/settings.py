@@ -64,16 +64,24 @@ DATABASES = {}
 if os.getenv('DATABASE_URL'):
     DATABASES['default'] = dj_database_url.parse(os.getenv('DATABASE_URL'), conn_max_age=600, ssl_require=True)
 else:
+    # Suporta tanto POSTGRES_* quanto as variáveis PG* comuns em plataformas cloud
+    pg_name = os.getenv('POSTGRES_DB') or os.getenv('PGDATABASE')
+    pg_user = os.getenv('POSTGRES_USER') or os.getenv('PGUSER')
+    pg_password = os.getenv('POSTGRES_PASSWORD') or os.getenv('PGPASSWORD')
+    pg_host = os.getenv('POSTGRES_HOST') or os.getenv('PGHOST', 'localhost')
+    pg_port = os.getenv('POSTGRES_PORT') or os.getenv('PGPORT', '5432')
+
     DATABASES['default'] = {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_DB'),
-        'USER': os.getenv('POSTGRES_USER'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
-        'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
-        'PORT': os.getenv('POSTGRES_PORT', '5432'),
+        'NAME': pg_name,
+        'USER': pg_user,
+        'PASSWORD': pg_password,
+        'HOST': pg_host,
+        'PORT': pg_port,
     }
-    if not all((DATABASES['default']['NAME'], DATABASES['default']['USER'])):
-        raise RuntimeError('Configuração de banco PostgreSQL incompleta: defina POSTGRES_DB e POSTGRES_USER')
+
+    if not all((pg_name, pg_user)):
+        raise RuntimeError('Configuração de banco PostgreSQL incompleta: defina POSTGRES_DB/POSTGRES_USER (ou PGDATABASE/PGUSER) no serviço web.')
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
