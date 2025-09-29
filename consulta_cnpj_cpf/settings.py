@@ -187,7 +187,6 @@ else:
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'login'
-SIGNUP_ENABLED = os.getenv('SIGNUP_ENABLED', 'True').lower() in ('1','true','yes')
 
 # HTTPS & Security
 SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True').lower() in ('1','true','yes')
@@ -209,9 +208,7 @@ CSRF_COOKIE_SAMESITE = os.getenv('CSRF_COOKIE_SAMESITE', 'Lax')
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_REFERRER_POLICY = os.getenv('SECURE_REFERRER_POLICY', 'same-origin')
 
-# Anti-bruteforce parameters
-LOGIN_MAX_ATTEMPTS = int(os.getenv('LOGIN_MAX_ATTEMPTS', '5'))
-LOGIN_LOCKOUT_SECONDS = int(os.getenv('LOGIN_LOCKOUT_SECONDS', '900'))
+# (Removido) Parâmetros manuais de anti-bruteforce; usamos apenas o Django Axes
 
 # Upload allowlist (CSV/XLSX)
 ALLOWED_UPLOAD_EXTENSIONS = ['.csv', '.xlsx']

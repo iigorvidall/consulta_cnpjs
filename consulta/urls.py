@@ -11,7 +11,6 @@ urlpatterns = [
     # Auth
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
-    path('signup/', views.signup_view, name='signup'),
     path('', views.home, name='home'),
     path('export/resultado/csv/', views.export_resultado_csv, name='export_resultado_csv'),
     path('export/resultado/xlsx/', views.export_resultado_xlsx, name='export_resultado_xlsx'),
