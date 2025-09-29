@@ -1,1 +1,1 @@
-web: gunicorn consulta_cnpj_cpf.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --timeout 120
+web: sh -c "python -m django_wait_for_db && python manage.py migrate --noinput && python manage.py collectstatic --noinput && exec gunicorn consulta_cnpj_cpf.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --timeout 120 --access-logfile - --error-logfile - --log-level info"
