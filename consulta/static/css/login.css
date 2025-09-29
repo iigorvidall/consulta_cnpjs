@@ -3,7 +3,7 @@ body {
     font-family: 'Inter', sans-serif;
     /* Fundo com imagem + overlay preto 60% */
     background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)),
-    url("{% static 'img/background.png' %}") !important;
+    url('../img/background.webp') !important;
     background-size: cover;
     /* cobre a viewport sem esticar demais */
     background-color: #0f0f0f;
