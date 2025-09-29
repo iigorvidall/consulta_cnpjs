@@ -29,7 +29,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'widget_tweaks',
     'axes',
-    'django_wait_for_db',
 ]
 
 MIDDLEWARE = [
