@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from datetime import timedelta
 import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,6 +23,7 @@ INSTALLED_APPS = [
     'consulta',
     'rest_framework',
     'widget_tweaks',
+    'axes',
 ]
 
 MIDDLEWARE = [
@@ -29,6 +31,7 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'axes.middleware.AxesMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -121,6 +124,21 @@ REST_FRAMEWORK = {
     },
 }
 
+# Django Axes (anti-bruteforce)
+AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+AXES_ENABLED = True
+AXES_FAILURE_LIMIT = int(os.getenv('AXES_FAILURE_LIMIT', '5'))
+AXES_COOLOFF_TIME = timedelta(minutes=int(os.getenv('AXES_COOLOFF_MINUTES', '15')))
+AXES_RESET_ON_SUCCESS = True
+# Lockout strategy: replicate user+IP+User-Agent combination
+AXES_LOCKOUT_PARAMETERS = ['username', 'ip_address', 'user_agent']
+# If behind a reverse proxy, enable and set header via env to get client IP correctly
+AXES_BEHIND_REVERSE_PROXY = os.getenv('AXES_BEHIND_REVERSE_PROXY', 'False').lower() in ('1','true','yes')
+AXES_REVERSE_PROXY_HEADER = os.getenv('AXES_REVERSE_PROXY_HEADER', 'HTTP_X_FORWARDED_FOR')
+
 # Cache (Redis if REDIS_URL)
 if os.getenv('REDIS_URL'):
     CACHES = {
@@ -144,8 +162,13 @@ LOGOUT_REDIRECT_URL = 'login'
 
 # HTTPS & Security
 SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True').lower() in ('1','true','yes')
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+# Cookies seguros: em dev (DEBUG=True) desabilita para evitar problemas em HTTP local
+if DEBUG:
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+else:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -160,3 +183,15 @@ SECURE_REFERRER_POLICY = os.getenv('SECURE_REFERRER_POLICY', 'same-origin')
 # Anti-bruteforce parameters
 LOGIN_MAX_ATTEMPTS = int(os.getenv('LOGIN_MAX_ATTEMPTS', '5'))
 LOGIN_LOCKOUT_SECONDS = int(os.getenv('LOGIN_LOCKOUT_SECONDS', '900'))
+
+# Upload allowlist (CSV/XLSX)
+ALLOWED_UPLOAD_EXTENSIONS = ['.csv', '.xlsx']
+ALLOWED_UPLOAD_MIME_TYPES = [
+    'text/csv',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+]
+
+# Limites de upload (proteção básica) – ajuste conforme sua necessidade
+DATA_UPLOAD_MAX_MEMORY_SIZE = int(os.getenv('DATA_UPLOAD_MAX_MEMORY_SIZE', str(5 * 1024 * 1024)))  # 5MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = int(os.getenv('FILE_UPLOAD_MAX_MEMORY_SIZE', str(5 * 1024 * 1024)))  # 5MB

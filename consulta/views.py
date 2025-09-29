@@ -34,6 +34,8 @@ from django.utils import timezone
 from .forms import ConsultaForm  # existing
 from .forms import LoginForm
 from rest_framework.permissions import IsAuthenticated
+from django.conf import settings
+import os
 
 @login_required(login_url='login')
 def status_retry(request):
@@ -78,19 +80,28 @@ def home(request):
 			cnpj_list, resultados = processar_cnpjs_manualmente(cnpjs, on_retry=on_retry)
 			cnpjs_registro = ','.join(cnpj_list)
 		elif csv_file:
-			tipo = 'upload'
-			if csv_file.name.lower().endswith('.csv'):
-				try:
-					resultados = processar_csv(csv_file, logger=logger, on_retry=on_retry)
-				except Exception as e:
-					error_msg = f'Erro ao processar o arquivo: {str(e)}'
-			elif csv_file.name.lower().endswith('.xlsx'):
-				try:
-					resultados = processar_xlsx(csv_file, logger=logger, on_retry=on_retry)
-				except Exception as e:
-					error_msg = f'Erro ao processar o arquivo: {str(e)}'
+			# Validação server-side do tipo de upload
+			fname_lower = (csv_file.name or '').lower()
+			ext = os.path.splitext(fname_lower)[1]
+			ctype = (getattr(csv_file, 'content_type', '') or '').lower()
+			allowed_ext = getattr(settings, 'ALLOWED_UPLOAD_EXTENSIONS', ['.csv', '.xlsx'])
+			allowed_types = getattr(settings, 'ALLOWED_UPLOAD_MIME_TYPES', [])
+			if (ext not in allowed_ext) or (allowed_types and ctype not in allowed_types):
+				error_msg = 'Arquivo não permitido. Envie apenas CSV ou XLSX.'
 			else:
-				error_msg = 'O arquivo enviado deve ser um CSV ou XLSX.'
+				tipo = 'upload'
+				if fname_lower.endswith('.csv'):
+					try:
+						resultados = processar_csv(csv_file, logger=logger, on_retry=on_retry)
+					except Exception as e:
+						error_msg = f'Erro ao processar o arquivo: {str(e)}'
+				elif fname_lower.endswith('.xlsx'):
+					try:
+						resultados = processar_xlsx(csv_file, logger=logger, on_retry=on_retry)
+					except Exception as e:
+						error_msg = f'Erro ao processar o arquivo: {str(e)}'
+				else:
+					error_msg = 'O arquivo enviado deve ser um CSV ou XLSX.'
 		# Limpa status de retry ao fim do processamento
 		request.session['status_retry'] = ''
 		# Salvar histórico se houver resultados (ou erro); sempre como lista
@@ -543,28 +554,6 @@ def _client_ip(request):
 		return xff.split(',')[0].strip()
 	return request.META.get('REMOTE_ADDR') or '0.0.0.0'
 
-def _is_locked(identifier: str) -> int:
-	"""Retorna segundos restantes de bloqueio para `identifier` ou 0 se livre."""
-	key = f"lock:{identifier}"
-	ttl = cache.ttl(key) if hasattr(cache, 'ttl') else None
-	if cache.get(key):
-		return int(ttl) if isinstance(ttl, (int, float)) and ttl and ttl > 0 else 1
-	return 0
-
-def _register_fail(identifier: str):
-	"""Registra falha de login e aplica bloqueio após limite configurado."""
-	max_attempts = int(getattr(__import__('django.conf').conf.settings, 'LOGIN_MAX_ATTEMPTS', 5))
-	lock_seconds = int(getattr(__import__('django.conf').conf.settings, 'LOGIN_LOCKOUT_SECONDS', 900))
-	count_key = f"attempts:{identifier}"
-	count = cache.get(count_key, 0) + 1
-	cache.set(count_key, count, timeout=lock_seconds)
-	if count >= max_attempts:
-		cache.set(f"lock:{identifier}", True, timeout=lock_seconds)
-
-def _reset_attempts(identifier: str):
-	"""Limpa contadores/locks de tentativa para `identifier`."""
-	cache.delete_many([f"attempts:{identifier}", f"lock:{identifier}"])
-
 
 def login_view(request):
 	"""Tela e submissão de login com mitigação de brute force por IP/identificador."""
@@ -573,14 +562,9 @@ def login_view(request):
 	form = LoginForm(request.POST or None)
 	error = None
 	ip = _client_ip(request)
-	# chaves de lock: por IP e por identificador
-	id_input = (request.POST.get('username') or '').strip().lower()
-	locked_ip = _is_locked(f"ip:{ip}")
-	locked_id = _is_locked(f"id:{id_input}") if id_input else 0
 	if request.method == 'POST':
-		if locked_ip or locked_id:
-			messages.error(request, 'Muitas tentativas. Tente novamente mais tarde.')
-		elif form.is_valid():
+		# Axes fará o bloqueio automático; aqui só validamos o formulário
+		if form.is_valid():
 			ident = form.cleaned_data['username']
 			password = form.cleaned_data['password']
 			# aceita e-mail ou usuário
@@ -594,14 +578,9 @@ def login_view(request):
 					pass
 			user = authenticate(request, username=username, password=password)
 			if user is not None:
-				_reset_attempts(f"ip:{ip}")
-				_reset_attempts(f"id:{id_input}")
 				auth_login(request, user)
 				return redirect('home')
 			else:
-				_register_fail(f"ip:{ip}")
-				if id_input:
-					_register_fail(f"id:{id_input}")
 				messages.error(request, 'Credenciais inválidas.')
 		else:
 			messages.error(request, 'Preencha os campos corretamente.')

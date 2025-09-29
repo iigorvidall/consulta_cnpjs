@@ -16,8 +16,46 @@ import openpyxl
 import xlsxwriter
 from django.conf import settings
 from clients.cnpja import CNPJAClient, CNPJAClientError
+from django.core.cache import cache
 
-DELAY_SECONDS = 1  # Delay fixo entre consultas para respeitar limites de API e UX
+DELAY_SECONDS = 0.5  # Delay fixo entre consultas para respeitar limites de API e UX (0.5s)
+
+
+# Rate limit simples (janela fixa) para no máx. 60 chamadas/minuto à API externa.
+# Usa o cache configurado (idealmente Redis em produção) para coordenar entre processos.
+RATE_LIMIT_PER_MINUTE = 60
+RATE_LIMIT_WINDOW = 60  # segundos
+
+def _rate_limit_acquire(key: str = 'cnpja_api', limit: int = RATE_LIMIT_PER_MINUTE, window_seconds: int = RATE_LIMIT_WINDOW):
+    """Bloqueia a chamada até que haja "slot" disponível dentro do limite.
+
+    Implementação com janela fixa por minuto. Em Redis, `incr` é atômico.
+    Em LocMemCache, coordena por processo; suficiente em dev.
+    """
+    now = time.time()
+    window = int(now // window_seconds)
+    cache_key = f"rl:{key}:{window}"
+    # Inicializa contador da janela com TTL restante do minuto
+    ttl = window_seconds - int(now % window_seconds) + 1
+    if cache.get(cache_key) is None:
+        cache.set(cache_key, 0, ttl)
+    # Verifica se já atingiu o teto
+    try:
+        current = cache.get(cache_key) or 0
+        if current >= limit:
+            # Espera até próxima janela
+            wait = window_seconds - (now % window_seconds) + 0.01
+            print(f"[RATE LIMIT] Atingido {limit}/min. Aguardando {wait:.2f}s para liberar próximo slot...")
+            time.sleep(wait)
+            return _rate_limit_acquire(key, limit, window_seconds)
+        # Reserva um slot
+        try:
+            cache.incr(cache_key)
+        except Exception:
+            cache.set(cache_key, current + 1, ttl)
+    except Exception:
+        # Em caso de falha no cache, não bloquear a execução (best effort)
+        pass
 
 
 def processar_cnpjs_manualmente(cnpjs: str, on_retry=None):
@@ -79,6 +117,9 @@ def consultar_cnpj_api(cnpj, retry_count=3, retry_wait=20, on_retry=None):
         # Dentro de cada tentativa, percorre a sequência de estratégias
         for strat, s_max_age, s_max_stale in strategies:
             try:
+                # Aplica rate limit apenas quando a estratégia não é puramente de CACHE
+                if strat != 'CACHE':
+                    _rate_limit_acquire('cnpja_api')
                 start_time = time.time()
                 data = client.get_office(
                     clean,
