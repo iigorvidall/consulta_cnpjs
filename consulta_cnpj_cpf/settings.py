@@ -5,7 +5,12 @@ from datetime import timedelta
 import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(os.path.join(BASE_DIR, '.env'))
+
+# Descobre DEBUG primeiro a partir do ambiente da plataforma (não do .env)
+_DEBUG_ENV = os.getenv('DEBUG', 'False').lower() in ('1','true','yes')
+# Em desenvolvimento local, carregue o .env; em produção (Railway), use apenas variáveis de ambiente da plataforma
+if _DEBUG_ENV:
+    load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 # Core config
 SECRET_KEY = os.getenv('SECRET_KEY', 'unsafe-default-change-in-prod')
@@ -62,26 +67,37 @@ WSGI_APPLICATION = 'consulta_cnpj_cpf.wsgi.application'
 # Database (PostgreSQL only). Prefer DATABASE_URL if provided by the platform.
 DATABASES = {}
 if os.getenv('DATABASE_URL'):
-    DATABASES['default'] = dj_database_url.parse(os.getenv('DATABASE_URL'), conn_max_age=600, ssl_require=True)
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.getenv('DATABASE_URL'),
+            conn_max_age=600,
+            ssl_require=True,
+        )
+    }
 else:
-    # Suporta tanto POSTGRES_* quanto as variáveis PG* comuns em plataformas cloud
-    pg_name = os.getenv('POSTGRES_DB') or os.getenv('PGDATABASE')
-    pg_user = os.getenv('POSTGRES_USER') or os.getenv('PGUSER')
-    pg_password = os.getenv('POSTGRES_PASSWORD') or os.getenv('PGPASSWORD')
-    pg_host = os.getenv('POSTGRES_HOST') or os.getenv('PGHOST', 'localhost')
-    pg_port = os.getenv('POSTGRES_PORT') or os.getenv('PGPORT', '5432')
+    pg_name = os.getenv('PGDATABASE') or os.getenv('POSTGRES_DB')
+    pg_user = os.getenv('PGUSER') or os.getenv('POSTGRES_USER')
+    pg_password = os.getenv('PGPASSWORD') or os.getenv('POSTGRES_PASSWORD')
+    pg_host = os.getenv('PGHOST') or os.getenv('POSTGRES_HOST') or 'localhost'
+    pg_port = os.getenv('PGPORT') or os.getenv('POSTGRES_PORT') or '5432'
 
-    DATABASES['default'] = {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': pg_name,
-        'USER': pg_user,
-        'PASSWORD': pg_password,
-        'HOST': pg_host,
-        'PORT': pg_port,
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': pg_name,
+            'USER': pg_user,
+            'PASSWORD': pg_password,
+            'HOST': pg_host,
+            'PORT': pg_port,
+        }
     }
 
     if not all((pg_name, pg_user)):
-        raise RuntimeError('Configuração de banco PostgreSQL incompleta: defina POSTGRES_DB/POSTGRES_USER (ou PGDATABASE/PGUSER) no serviço web.')
+        raise RuntimeError('Configuração de banco PostgreSQL incompleta: defina PGDATABASE/PGUSER (ou POSTGRES_DB/POSTGRES_USER) no serviço web.')
+
+
+    if not all((pg_name, pg_user)):
+        raise RuntimeError('Configuração de banco PostgreSQL incompleta: defina PGDATABASE/PGUSER (ou POSTGRES_DB/POSTGRES_USER) no serviço web.')
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
