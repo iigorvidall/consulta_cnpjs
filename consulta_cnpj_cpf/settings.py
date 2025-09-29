@@ -63,7 +63,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'consulta_cnpj_cpf.wsgi.application'
 
-# Database (PostgreSQL only). Prefer DATABASE_URL if provided by the platform.
+# Database configuration. Prefer DATABASE_URL if provided by the platform.
 DATABASES = {}
 if os.getenv('DATABASE_URL'):
     DATABASES = {
@@ -74,29 +74,33 @@ if os.getenv('DATABASE_URL'):
         )
     }
 else:
+    # Check if PostgreSQL environment variables are set
     pg_name = os.getenv('PGDATABASE') or os.getenv('POSTGRES_DB')
     pg_user = os.getenv('PGUSER') or os.getenv('POSTGRES_USER')
     pg_password = os.getenv('PGPASSWORD') or os.getenv('POSTGRES_PASSWORD')
     pg_host = os.getenv('PGHOST') or os.getenv('POSTGRES_HOST') or 'localhost'
     pg_port = os.getenv('PGPORT') or os.getenv('POSTGRES_PORT') or '5432'
 
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': pg_name,
-            'USER': pg_user,
-            'PASSWORD': pg_password,
-            'HOST': pg_host,
-            'PORT': pg_port,
+    if pg_name and pg_user:
+        # Use PostgreSQL if variables are set
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': pg_name,
+                'USER': pg_user,
+                'PASSWORD': pg_password,
+                'HOST': pg_host,
+                'PORT': pg_port,
+            }
         }
-    }
-
-    if not all((pg_name, pg_user)):
-        raise RuntimeError('Configuração de banco PostgreSQL incompleta: defina PGDATABASE/PGUSER (ou POSTGRES_DB/POSTGRES_USER) no serviço web.')
-
-
-    if not all((pg_name, pg_user)):
-        raise RuntimeError('Configuração de banco PostgreSQL incompleta: defina PGDATABASE/PGUSER (ou POSTGRES_DB/POSTGRES_USER) no serviço web.')
+    else:
+        # Fallback to SQLite for development
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / 'db.sqlite3',
+            }
+        }
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},

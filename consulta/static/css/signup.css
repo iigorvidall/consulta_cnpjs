@@ -1,0 +1,20 @@
+body {
+	font-family: 'Inter', sans-serif;
+	background:
+		linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)),
+		url('/static/img/background.png') no-repeat center center fixed;
+	background-size: cover;
+	min-height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin: 0;
+	padding: 20px;
+}
+.row-flex { display: flex; gap: 12px; }
+.row-flex > div { flex: 1 1 0; }
+@media (max-width: 768px) { .row-flex { flex-direction: column; gap: 0; } }
+
+.login-card { background: #ffffff; border-radius: 5px; padding: 56px 56px; width: 100%; max-width: 800px; min-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); position: relative; overflow: hidden; }
+
+@media (max-width: 768px) { .login-card { max-width: 98vw; min-width: unset; padding: 32px 12px; } }
