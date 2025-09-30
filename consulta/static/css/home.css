@@ -1,0 +1,601 @@
+:root {
+    --ignea-brown: #a4896a;
+    --ignea-brown-dark: #8b7355;
+    --ignea-dark: #1a1a1a;
+    --ignea-gray: #2a2a2a;
+    --ignea-border: #404040;
+    --ignea-text: #ffffff;
+    --ignea-muted: #a0a0a0;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Montserrat', sans-serif;
+    background-color: var(--ignea-dark);
+    color: var(--ignea-text);
+    min-height: 100vh;
+    padding-bottom: 32px; /* espaço ao fim da tela */
+}
+
+.ignea-container {
+    background-color: var(--ignea-dark);
+    border: 1px solid var(--ignea-border);
+    border-radius: 8px;
+    padding: 24px;
+    margin: 16px 0;
+    position: relative;
+    transition: padding 600ms ease, margin 600ms ease, border-color 600ms ease;
+}
+
+/* Área colapsável dos inputs (consulta manual e upload) */
+#aba-consulta {
+    overflow: hidden;
+    max-height: 360px; /* altura aberta aprox. */
+    opacity: 1;
+    transition: max-height 720ms ease, opacity 600ms ease, margin 600ms ease;
+    margin-top: 12px; /* espaço entre seta e primeira linha (labels) */
+}
+
+.ignea-container.is-compact {
+    padding-top: 12px;
+    padding-bottom: 12px;
+}
+
+.ignea-container.is-compact #aba-consulta {
+    max-height: 0;
+    opacity: 0;
+    margin: 0;
+    pointer-events: none;
+}
+
+/* Botão de seta para recolher/expandir o card */
+.toggle-card-btn {
+    background: transparent;
+    border: 1px solid var(--ignea-brown);
+    color: var(--ignea-brown);
+    border-radius: 999px;
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    transform: none;
+    z-index: 3;
+    transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+}
+
+.toggle-card-btn:hover {
+    background-color: var(--ignea-brown);
+    color: var(--ignea-dark);
+}
+
+.toggle-card-btn svg {
+    transition: transform 360ms ease;
+}
+
+.ignea-container.is-compact .toggle-card-btn svg {
+    transform: rotate(180deg);
+}
+
+.ignea-logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 12px;
+    padding: 20px 0;
+}
+
+.ignea-logo img {
+    width: 200px;
+}
+
+.ignea-input {
+    background-color: var(--ignea-gray);
+    border: 1px solid var(--ignea-border);
+    color: var(--ignea-text);
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    width: 100%;
+    outline: none;
+    box-shadow: none;
+    transition: border-color 0.2s;
+}
+
+.ignea-input:focus {
+    border-color: var(--ignea-brown);
+}
+
+.ignea-input::placeholder {
+    color: rgba(160, 160, 160, 0.4);
+}
+
+.ignea-button {
+    background-color: transparent;
+    border: 1px solid var(--ignea-brown);
+    color: var(--ignea-text);
+    padding: 10px 24px;
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    text-decoration: none; /* remove sublinhado de anchors */
+}
+
+.ignea-button:hover {
+    background-color: var(--ignea-brown);
+    color: var(--ignea-dark);
+    text-decoration: none;
+}
+
+.ignea-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+a.ignea-button,
+a.ignea-button:hover,
+a.ignea-button:focus {
+    text-decoration: none;
+}
+
+/* Ícone-only generic button (ex: Limpar) */
+.btn-icon-only {
+    padding: 8px;
+    width: 36px;
+    height: 36px;
+    display: inline-grid;
+    place-items: center;
+}
+
+.btn-danger-outline:hover {
+    background: #d32f2f;
+    border-color: #d32f2f;
+    color: #fff;
+}
+
+.btn-action-fixed {
+    min-width: 140px;
+}
+
+.actions-row {
+    padding-right: 52px;
+}
+
+.ignea-tab {
+    background-color: var(--ignea-gray);
+    color: var(--ignea-text);
+    padding: 12px 24px;
+    border-radius: 6px 6px 0 0;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    margin-right: 2px;
+}
+
+.ignea-tab.active {
+    background-color: var(--ignea-brown);
+    color: var(--ignea-dark);
+}
+
+.ignea-table {
+    background-color: var(--ignea-gray);
+    border: 1px solid var(--ignea-brown);
+    border-radius: 0 6px 6px 6px;
+    overflow: hidden;
+}
+
+.ignea-table-header {
+    background-color: var(--ignea-brown);
+    color: var(--ignea-text);
+    font-weight: 600;
+}
+
+.ignea-table-row {
+    border-bottom: 1px solid var(--ignea-border);
+    background-color: var(--ignea-gray) !important;
+    transition: background-color 0.2s ease;
+}
+
+.ignea-table-row:hover {
+    background-color: var(--ignea-border) !important;
+}
+
+.ignea-select {
+    background-color: var(--ignea-gray);
+    border: 1px solid var(--ignea-border);
+    color: var(--ignea-text);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.search-input-wide {
+    min-width: 260px;
+    width: clamp(220px, 32vw, 420px);
+}
+
+.ignea-file-input {
+    background-color: var(--ignea-gray);
+    border: 1px solid var(--ignea-border);
+    color: var(--ignea-muted);
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    width: 100%;
+}
+
+.file-label {
+    color: var(--ignea-muted);
+    font-size: 14px;
+    margin-top: 8px;
+}
+
+.btn-details {
+    color: var(--ignea-text);
+    text-decoration: none;
+    cursor: pointer;
+    line-height: 0;
+}
+
+.btn-details:hover {
+    background: var(--ignea-brown) !important;
+    color: var(--ignea-dark) !important;
+    border-color: var(--ignea-brown) !important;
+    text-decoration: none;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background-color: var(--ignea-gray);
+    border: 1px solid var(--ignea-brown);
+    border-radius: 8px;
+    padding: 24px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+/* Modal mais largo no desktop */
+@media (min-width: 992px) {
+    .modal-content {
+        max-width: 1000px;
+        width: 95vw; /* não passa da viewport, mas limita a 1000px pelo max-width */
+    }
+}
+
+/* Scroll interno para tabelas: mostrar no máximo 7 linhas + cabeçalho */
+:root {
+    --ignea-row-h: 64px;
+    --ignea-head-h: 52px;
+}
+
+.scroll-table-container {
+    max-height: calc(var(--ignea-head-h) + var(--ignea-row-h) * 7);
+    overflow-y: auto;
+    overflow-x: hidden;
+    width: 100%;
+}
+
+.scroll-table-container table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+
+.scroll-table-container thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background-color: var(--ignea-brown);
+    color: var(--ignea-text);
+}
+
+/* Quebra de linha padrão (sem quebrar por caractere) */
+.scroll-table-container td,
+.scroll-table-container th {
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: normal;
+}
+
+/* Centralização vertical das células para alinhar o botão de detalhes */
+.ignea-table td {
+    vertical-align: middle;
+}
+
+/* Centralizar o botão de detalhes na célula (sem flex para evitar scroll interno) */
+#tab-resultado table tbody td:nth-child(5),
+#tab-historico table tbody td:nth-child(6) {
+    text-align: center;
+    vertical-align: middle;
+    padding: 0;
+    overflow: visible !important;
+    white-space: normal !important;
+    word-break: normal;
+    max-width: 120px;
+}
+
+/* Tamanho de fonte dentro da tabela */
+.ignea-table th,
+.ignea-table td {
+    font-size: 14px;
+}
+
+/* Remover bordas brancas das células */
+.ignea-table table,
+.ignea-table th,
+.ignea-table td {
+    border: none !important;
+}
+
+.ignea-table .table-dark> :not(caption)>*>* {
+    border-bottom-width: 0 !important;
+}
+
+.ignea-table .table-dark thead th,
+.ignea-table .table-dark thead tr {
+    border-top: 0 !important;
+}
+
+.ignea-table .table-dark {
+    --bs-table-border-color: transparent;
+}
+
+/* Forçar fundo cinza nas células do corpo da tabela, mantendo o cabeçalho marrom */
+.ignea-table .table-dark tbody td,
+.ignea-table .table-dark tbody th {
+    background-color: var(--ignea-gray) !important;
+}
+
+/* Cabeçalho marrom (tom do site) */
+.ignea-table .table-dark thead th {
+    background-color: var(--ignea-brown) !important;
+    color: var(--ignea-text) !important;
+}
+
+.ignea-table .table-dark tbody tr:hover td,
+.ignea-table .table-dark tbody tr:hover th {
+    background-color: var(--ignea-border) !important;
+}
+
+/* Larguras fixas de colunas */
+/* Resultado: Processo(1) 200px, CNPJ(2) 200px, Email(4) 300px, Detalhes(5) 120px */
+#tab-resultado table thead th:nth-child(1),
+#tab-resultado table tbody td:nth-child(1) {
+    width: 200px;
+    min-width: 200px;
+    max-width: 200px;
+}
+
+#tab-resultado table thead th:nth-child(2),
+#tab-resultado table tbody td:nth-child(2) {
+    width: 200px;
+    min-width: 200px;
+    max-width: 200px;
+}
+
+#tab-resultado table thead th:nth-child(4),
+#tab-resultado table tbody td:nth-child(4) {
+    width: 300px;
+    min-width: 300px;
+    max-width: 300px;
+}
+
+#tab-resultado table thead th:nth-child(5),
+#tab-resultado table tbody td:nth-child(5) {
+    width: 120px;
+    min-width: 120px;
+    max-width: 120px;
+    text-align: center;
+}
+
+/* Histórico: Data(1) 120px, Processo(2) 200px, CNPJ(3) 200px, Email(5) 300px, Detalhes(6) 120px */
+#tab-historico table thead th:nth-child(1),
+#tab-historico table tbody td:nth-child(1) {
+    width: 120px;
+    min-width: 120px;
+    max-width: 120px;
+}
+
+#tab-historico table thead th:nth-child(2),
+#tab-historico table tbody td:nth-child(2) {
+    width: 200px;
+    min-width: 200px;
+    max-width: 200px;
+}
+
+#tab-historico table thead th:nth-child(3),
+#tab-historico table tbody td:nth-child(3) {
+    width: 200px;
+    min-width: 200px;
+    max-width: 200px;
+}
+
+#tab-historico table thead th:nth-child(5),
+#tab-historico table tbody td:nth-child(5) {
+    width: 300px;
+    min-width: 300px;
+    max-width: 300px;
+}
+
+#tab-historico table thead th:nth-child(6),
+#tab-historico table tbody td:nth-child(6) {
+    width: 120px;
+    min-width: 120px;
+    max-width: 120px;
+    text-align: center;
+}
+
+@media (max-width: 768px) {
+    .ignea-container {
+        padding: 16px;
+        margin: 8px 0;
+    }
+
+    .ignea-logo img {
+        max-height: 80px;
+    }
+
+    .search-input-wide {
+        min-width: 200px;
+        width: 100%;
+    }
+
+    /* No mobile, permitir scroll horizontal na tabela inteira (cabeçalho e linhas) */
+    /* O wrapper do Bootstrap faz o scroll horizontal */
+    #tab-resultado.table-responsive,
+    #tab-historico.table-responsive {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* O container interno cuida apenas do scroll vertical */
+    .scroll-table-container {
+        overflow-x: visible !important;
+    }
+
+    /* Garantir que o invólucro externo não bloqueie o overflow-x */
+    .ignea-table {
+        overflow-x: visible;
+    }
+
+    .scroll-table-container table {
+        min-width: 1100px;
+        table-layout: auto;
+    }
+
+    /* Mantém tokens sem espaços numa linha só (evita 1 char/linha) */
+    /* Resultado: Processo(1), CNPJ(2), Email(4) */
+    #tab-resultado table th:nth-child(1),
+    #tab-resultado table td:nth-child(1),
+    #tab-resultado table th:nth-child(2),
+    #tab-resultado table td:nth-child(2),
+    #tab-resultado table th:nth-child(4),
+    #tab-resultado table td:nth-child(4) {
+        white-space: nowrap;
+    }
+
+    /* Histórico: Data(1), Processo(2), CNPJ(3), Email(5) */
+    #tab-historico table th:nth-child(1),
+    #tab-historico table td:nth-child(1),
+    #tab-historico table th:nth-child(2),
+    #tab-historico table td:nth-child(2),
+    #tab-historico table th:nth-child(3),
+    #tab-historico table td:nth-child(3),
+    #tab-historico table th:nth-child(5),
+    #tab-historico table td:nth-child(5) {
+        white-space: nowrap;
+    }
+
+    /* Nome pode quebrar normalmente */
+    #tab-resultado table th:nth-child(3),
+    #tab-resultado table td:nth-child(3),
+    #tab-historico table th:nth-child(4),
+    #tab-historico table td:nth-child(4) {
+        white-space: normal !important;
+        word-break: normal !important;
+        overflow-wrap: normal !important;
+    }
+}
+
+/* Regras responsivas para telas abaixo de 1200px: evitar sobreposição e reduzir larguras */
+@media (max-width: 1199.98px) {
+
+    /* Habilita scroll horizontal no wrapper responsivo também em tablets/monitores menores */
+    #tab-resultado.table-responsive,
+    #tab-historico.table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .scroll-table-container {
+        overflow-x: visible;
+    }
+
+    /* Largura mínima suficiente para evitar colunas se comprimirem demais */
+    #tab-historico .scroll-table-container table {
+        min-width: 1140px;
+        table-layout: auto;
+    }
+
+    #tab-resultado .scroll-table-container table {
+        min-width: 1040px;
+        table-layout: auto;
+    }
+
+    /* Resultado: Processo(1) e CNPJ(2) reduzem para 150px */
+    #tab-resultado table thead th:nth-child(1),
+    #tab-resultado table tbody td:nth-child(1),
+    #tab-resultado table thead th:nth-child(2),
+    #tab-resultado table tbody td:nth-child(2) {
+        width: 150px;
+        min-width: 150px;
+        max-width: 150px;
+    }
+
+    /* Histórico: Processo(2) e CNPJ(3) reduzem para 150px */
+    #tab-historico table thead th:nth-child(2),
+    #tab-historico table tbody td:nth-child(2),
+    #tab-historico table thead th:nth-child(3),
+    #tab-historico table tbody td:nth-child(3) {
+        width: 150px;
+        min-width: 150px;
+        max-width: 150px;
+    }
+
+    /* Garante um espaço mínimo para Nome no histórico para não "invadir" o E-mail */
+    #tab-historico table thead th:nth-child(4),
+    #tab-historico table tbody td:nth-child(4) {
+        min-width: 260px;
+    }
+}
+
+/* Fora do mobile, também garantir que a coluna Nome não quebre por caractere */
+#tab-resultado table thead th:nth-child(3),
+#tab-resultado table tbody td:nth-child(3),
+#tab-historico table thead th:nth-child(4),
+#tab-historico table tbody td:nth-child(4) {
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: normal;
+}
+
+/* Logout button styles */
+#btn-logout {
+    color: var(--ignea-muted);
+}
+
+#btn-logout:hover {
+    color: var(--ignea-text);
+}
+
+#btn-logout i {
+    font-size: 18px;
+    transform: scaleX(-1);
+    display: inline-block;
+}
