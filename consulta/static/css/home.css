@@ -395,9 +395,9 @@ a.ignea-button:focus {
 
 #tab-resultado table thead th:nth-child(2),
 #tab-resultado table tbody td:nth-child(2) {
-    width: 150px;
-    min-width: 150px;
-    max-width: 150px;
+    width: 170px;
+    min-width: 170px;
+    max-width: 170px;
 }
 
 #tab-resultado table thead th:nth-child(5),
@@ -439,9 +439,9 @@ a.ignea-button:focus {
 
 #tab-historico table thead th:nth-child(3),
 #tab-historico table tbody td:nth-child(3) {
-    width: 150px;
-    min-width: 150px;
-    max-width: 150px;
+    width: 170px;
+    min-width: 170px;
+    max-width: 170px;
 }
 
 #tab-historico table thead th:nth-child(6),
@@ -572,9 +572,9 @@ a.ignea-button:focus {
     #tab-resultado table tbody td:nth-child(1),
     #tab-resultado table thead th:nth-child(2),
     #tab-resultado table tbody td:nth-child(2) {
-        width: 150px;
-        min-width: 150px;
-        max-width: 150px;
+        width: 170px;
+        min-width: 170px;
+        max-width: 170px;
     }
 
     /* Histórico: Processo(2) e CNPJ(3) reduzem para 150px */
@@ -582,9 +582,9 @@ a.ignea-button:focus {
     #tab-historico table tbody td:nth-child(2),
     #tab-historico table thead th:nth-child(3),
     #tab-historico table tbody td:nth-child(3) {
-        width: 150px;
-        min-width: 150px;
-        max-width: 150px;
+        width: 170px;
+        min-width: 170px;
+        max-width: 170px;
     }
 
     /* Garante um espaço mínimo para Nome no histórico para não "invadir" o E-mail */
