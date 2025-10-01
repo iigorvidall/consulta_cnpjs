@@ -19,7 +19,9 @@ from django.conf import settings
 from clients.cnpja import CNPJAClient, CNPJAClientError
 from django.core.cache import cache
 
-DELAY_SECONDS = 0.5  # Delay fixo entre consultas para respeitar limites de API e UX (0.5s)
+# Delay base entre consultas (segundos). Pode ser configurado via settings.JOB_DELAY_SECONDS
+# Recomendado >= 1.0s para manter ~60/min ou menos.
+DELAY_SECONDS = getattr(settings, 'JOB_DELAY_SECONDS', 1)
 
 
 # Rate limit simples (janela fixa) para no máx. 60 chamadas/minuto à API externa.
@@ -170,8 +172,21 @@ def consultar_cnpj_api(cnpj, retry_count=3, retry_wait=20, on_retry=None):
                     continue
                 print(f"[ERRO API PRO] via={strat} CNPJ {format_cnpj(clean)}: {msg}")
                 if '429' in msg:
+                    # Aguarda antes de nova tentativa. Tenta usar ttl do corpo se presente (ex: {"ttl":4})
+                    wait_secs = retry_wait
+                    try:
+                        # Procura padrão "ttl": <n>
+                        m = re.search(r'"ttl"\s*:\s*(\d+)', msg)
+                        if m:
+                            ttl_val = int(m.group(1))
+                            # adiciona 1s de margem acima do TTL restante
+                            wait_secs = max(retry_wait, ttl_val + 1)
+                    except Exception:
+                        pass
                     if on_retry:
-                        on_retry(attempt + 1, retry_wait)
+                        on_retry(attempt + 1, wait_secs)
+                    print(f"[BACKOFF 429] Aguardando {wait_secs}s antes do retry...")
+                    time.sleep(wait_secs)
                     # passa para próxima tentativa (retry)
                     break
                 # Para outros erros, encerra
@@ -184,6 +199,11 @@ def consultar_cnpj_api(cnpj, retry_count=3, retry_wait=20, on_retry=None):
             except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
                 last_error = 'Timeout/ConnectionError'
                 print(f"[TIMEOUT/CONNECTION ERROR] via={strat} CNPJ {format_cnpj(clean)}: Tentativa {attempt+1}")
+                # aguarda antes da próxima tentativa
+                wait_secs = max(5, retry_wait // 2)
+                if on_retry:
+                    on_retry(attempt + 1, wait_secs)
+                time.sleep(wait_secs)
                 # passa para próxima tentativa (retry)
                 break
             except Exception as e:
