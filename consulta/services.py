@@ -8,6 +8,7 @@ Responsabilidades principais:
 """
 
 import re
+import unicodedata
 import csv
 import io
 import time
@@ -71,6 +72,15 @@ def processar_cnpjs_manualmente(cnpjs: str, on_retry=None):
         print(f"[DELAY] Aguardando {DELAY_SECONDS}s para próxima requisição...")
         time.sleep(DELAY_SECONDS)
     return cnpj_list, resultados
+
+
+def _norm(s: str) -> str:
+    """Normalize header keys for comparison: lowercase and remove accents."""
+    if s is None:
+        return ''
+    s = str(s)
+    s = unicodedata.normalize('NFKD', s).encode('ASCII', 'ignore').decode('ASCII')
+    return s.lower().strip()
 
 
 def clean_cnpj(cnpj):
@@ -265,10 +275,17 @@ def processar_csv(file, logger=None, on_retry=None):
     reader = csv.DictReader(io.StringIO(decoded))
     cnpj_keys = ['cnpj', 'CNPJ', 'CNPJ/CPF', 'cnpj_cpf', 'nrcpfcnpj', 'NRCPFCNPJ', 'cpf/cnpj', 'CNPJCPF']
     proc_keys = ['processo', 'Processo', 'número do processo', 'numero do processo', 'dsprocesso', 'DSProcesso']
+    ds_keys = ['dsevento', 'ds evento', 'ds_evento']
+    op_keys = ['oportunidade']
+    sub_keys = ['substancias', 'substancias', 'substancia', 'substâncias', 'substância']
     resultados = []
+    print(f"[SERVICES-CSV] Headers: {reader.fieldnames}")
     for row in reader:
         cnpj_val = None
         proc_val = None
+        dsevento_val = None
+        oportunidade_val = None
+        substancias_val = None
 
         # 1) Detectar por cabeçalho
         for key in row:
@@ -279,6 +296,13 @@ def processar_csv(file, logger=None, on_retry=None):
                     logger.info(f"Linha CSV: '{original}' -> CNPJ limpo: '{cnpj_val}'")
             if not proc_val and any(k.lower() in key.lower() for k in proc_keys):
                 proc_val = (row[key] or '').strip()
+            kn = _norm(key)
+            if dsevento_val is None and any(k in kn for k in ds_keys):
+                dsevento_val = (row[key] or '').strip()
+            if oportunidade_val is None and any(k in kn for k in op_keys):
+                oportunidade_val = (row[key] or '').strip()
+            if substancias_val is None and any(k in kn for k in sub_keys):
+                substancias_val = (row[key] or '').strip()
 
         # 2) Fallback por regex
         if not cnpj_val:
@@ -296,11 +320,18 @@ def processar_csv(file, logger=None, on_retry=None):
                     logger.info(f'Consultando CNPJ (CSV): {cnpj_val}')
                 resultado = consultar_cnpj_api(cnpj_val, on_retry=on_retry)
                 resultado['processo'] = proc_val
+                if dsevento_val is not None:
+                    resultado['dsevento'] = dsevento_val
+                if oportunidade_val is not None:
+                    resultado['oportunidade'] = oportunidade_val
+                if substancias_val is not None:
+                    resultado['substancias'] = substancias_val
+                print(f"[SERVICES-CSV] row -> proc:{proc_val} dsev:{dsevento_val} op:{oportunidade_val} sub:{substancias_val}")
                 resultados.append(resultado)
             except Exception as e:
                 if logger:
                     logger.error(f'Erro ao consultar CNPJ {cnpj_val}: {e}')
-                resultados.append({'processo': proc_val, 'cnpj': format_cnpj(cnpj_val), 'nome': '-', 'email': f'Erro: {str(e)}', 'detalhes': None})
+                resultados.append({'processo': proc_val, 'cnpj': format_cnpj(cnpj_val), 'nome': '-', 'email': f'Erro: {str(e)}', 'detalhes': None, 'dsevento': dsevento_val, 'oportunidade': oportunidade_val, 'substancias': substancias_val})
             time.sleep(DELAY_SECONDS)
     return resultados
 
@@ -313,15 +344,26 @@ def processar_xlsx(file, logger=None, on_retry=None):
     wb = openpyxl.load_workbook(file, read_only=True)
     ws = wb.active
     headers = [str(cell.value).strip() if cell.value else '' for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+    print(f"[SERVICES-XLSX] Headers: {headers}")
     cnpj_keys = ['cnpj', 'CNPJ', 'CNPJ/CPF', 'cnpj_cpf', 'nrcpfcnpj', 'NRCPFCNPJ', 'cpf/cnpj', 'CNPJCPF']
     proc_keys = ['processo', 'Processo', 'número do processo', 'numero do processo', 'dsprocesso', 'DSProcesso']
     cnpj_idx = None
     proc_idx = None
+    ds_idx = None
+    op_idx = None
+    sub_idx = None
     for idx, h in enumerate(headers):
+        hn = _norm(h)
         if cnpj_idx is None and any(k.lower() in h.lower() for k in cnpj_keys):
             cnpj_idx = idx
         if proc_idx is None and any(k.lower() in h.lower() for k in proc_keys):
             proc_idx = idx
+        if ds_idx is None and any(k in hn for k in ['dsevento','ds evento','ds_evento']):
+            ds_idx = idx
+        if op_idx is None and 'oportunidade' in hn:
+            op_idx = idx
+        if sub_idx is None and any(k in hn for k in ['substancias','substancia','substancias','substancias']):
+            sub_idx = idx
 
     resultados = []
     for row in ws.iter_rows(min_row=2):
@@ -330,6 +372,9 @@ def processar_xlsx(file, logger=None, on_retry=None):
         if cnpj_idx is not None and row[cnpj_idx].value:
             cnpj_val = clean_cnpj(str(row[cnpj_idx].value))
         proc_val = (str(row[proc_idx].value).strip() if (proc_idx is not None and row[proc_idx].value) else None)
+        dsevento_val = (str(row[ds_idx].value).strip() if (ds_idx is not None and row[ds_idx].value) else None)
+        oportunidade_val = (str(row[op_idx].value).strip() if (op_idx is not None and row[op_idx].value) else None)
+        substancias_val = (str(row[sub_idx].value).strip() if (sub_idx is not None and row[sub_idx].value) else None)
 
         # 2) Fallback por regex
         if not cnpj_val:
@@ -345,9 +390,16 @@ def processar_xlsx(file, logger=None, on_retry=None):
             try:
                 resultado = consultar_cnpj_api(cnpj_val, on_retry=on_retry)
                 resultado['processo'] = proc_val
+                if dsevento_val is not None:
+                    resultado['dsevento'] = dsevento_val
+                if oportunidade_val is not None:
+                    resultado['oportunidade'] = oportunidade_val
+                if substancias_val is not None:
+                    resultado['substancias'] = substancias_val
+                print(f"[SERVICES-XLSX] row -> proc:{proc_val} dsev:{dsevento_val} op:{oportunidade_val} sub:{substancias_val}")
                 resultados.append(resultado)
             except Exception as e:
-                resultados.append({'processo': proc_val, 'cnpj': format_cnpj(cnpj_val), 'nome': '-', 'email': f'Erro: {str(e)}', 'detalhes': None})
+                resultados.append({'processo': proc_val, 'cnpj': format_cnpj(cnpj_val), 'nome': '-', 'email': f'Erro: {str(e)}', 'detalhes': None, 'dsevento': dsevento_val, 'oportunidade': oportunidade_val, 'substancias': substancias_val})
             time.sleep(DELAY_SECONDS)
     return resultados
 
@@ -360,22 +412,25 @@ def exportar_csv(resultados, include_data=False):
     output = io.StringIO()
     writer = csv.writer(output)
     if include_data:
-        writer.writerow(['Data', 'Processo', 'CNPJ', 'Nome', 'E-mail'])
+        writer.writerow(['Data', 'Processo', 'CNPJ', 'DSEvento', 'OPORTUNIDADE', 'Substâncias', 'Nome', 'E-mail'])
         for r in resultados:
             writer.writerow([
                 r.get('data', ''),
                 r.get('processo', ''),
                 r.get('cnpj', ''),
+                r.get('dsevento', ''),
+                r.get('oportunidade', ''),
+                r.get('substancias', ''),
                 r.get('nome', ''),
                 r.get('email', '')
             ])
     else:
-        writer.writerow(['Processo', 'CNPJ', 'Nome', 'E-mail'])
+        writer.writerow(['Processo', 'CNPJ', 'DSEvento', 'OPORTUNIDADE', 'Substâncias', 'Nome', 'E-mail'])
         for r in resultados:
             email = r.get('email', '')
             if email in ('', '-', None):
                 email = 'Sem e-mail'
-            writer.writerow([r.get('processo', ''), r.get('cnpj', ''), r.get('nome', ''), email])
+            writer.writerow([r.get('processo', ''), r.get('cnpj', ''), r.get('dsevento', ''), r.get('oportunidade', ''), r.get('substancias', ''), r.get('nome', ''), email])
     return output.getvalue()
 
 
@@ -388,16 +443,25 @@ def exportar_xlsx(resultados, include_data=False):
     wb = xlsxwriter.Workbook(output, {'in_memory': True})
     ws = wb.add_worksheet('Export')
     if include_data:
-        ws.write_row(0, 0, ['Data', 'Processo', 'CNPJ', 'Nome', 'E-mail'])
+        ws.write_row(0, 0, ['Data', 'Processo', 'CNPJ', 'DSEvento', 'OPORTUNIDADE', 'Substâncias', 'Nome', 'E-mail'])
         for idx, r in enumerate(resultados, 1):
-            ws.write_row(idx, 0, [r.get('data', ''), r.get('processo', ''), r.get('cnpj', ''), r.get('nome', ''), r.get('email', '')])
+            ws.write_row(idx, 0, [
+                r.get('data', ''),
+                r.get('processo', ''),
+                r.get('cnpj', ''),
+                r.get('dsevento', ''),
+                r.get('oportunidade', ''),
+                r.get('substancias', ''),
+                r.get('nome', ''),
+                r.get('email', ''),
+            ])
     else:
-        ws.write_row(0, 0, ['Processo', 'CNPJ', 'Nome', 'E-mail'])
+        ws.write_row(0, 0, ['Processo', 'CNPJ', 'DSEvento', 'OPORTUNIDADE', 'Substâncias', 'Nome', 'E-mail'])
         for idx, r in enumerate(resultados, 1):
             email = r.get('email', '')
             if email in ('', '-', None):
                 email = 'Sem e-mail'
-            ws.write_row(idx, 0, [r.get('processo', ''), r.get('cnpj', ''), r.get('nome', ''), email])
+            ws.write_row(idx, 0, [r.get('processo', ''), r.get('cnpj', ''), r.get('dsevento', ''), r.get('oportunidade', ''), r.get('substancias', ''), r.get('nome', ''), email])
     wb.close()
     output.seek(0)
     return output.read()

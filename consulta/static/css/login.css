@@ -1,4 +1,8 @@
 /* Provided by user in prompt; placed as-is */
+html, body {
+    height: 100%;
+}
+
 body {
     font-family: 'Inter', sans-serif;
     display: flex;
@@ -12,8 +16,7 @@ body {
     background: #ffffff;
     border-radius: 5px;
     padding: 48px 40px;
-    width: 100%;
-    max-width: 440px;
+    width: min(560px, 92vw);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     position: relative;
     overflow: hidden;
@@ -73,6 +76,7 @@ body {
     border-radius: 8px;
     padding: 16px;
     font-size: 16px;
+    min-height: 48px; /* alvo de toque confortável */
     background: #fcfdfe;
     transition: all 0.2s ease;
     margin-bottom: 20px;
@@ -103,6 +107,7 @@ body {
     width: 100%;
     transition: all 0.2s ease;
     margin-bottom: 24px;
+    min-height: 48px; /* alvo de toque confortável */
 }
 
 .btn-login:hover {
@@ -131,33 +136,96 @@ body {
     margin-bottom: 0;
 }
 
-@media (max-width: 576px) {
-    .login-card {
-        padding: 32px 24px;
-        margin: 16px;
-    }
+/* Tablets e telas médias */
+@media (max-width: 768px) {
+  body {
+    padding: 16px;
+  }
 
-    .logo {
-        font-size: 24px;
-    }
+  .login-card {
+    padding: 36px 28px;
+    width: min(560px, 94vw);
+  }
 
-    .form-control {
-        padding: 14px;
-        font-size: 14px;
-    }
+  .logo-container {
+    margin-bottom: 32px;
+  }
 
-    .btn-login {
-        padding: 14px;
-        font-size: 14px;
-    }
+  .logo {
+    width: 200px;
+    height: 52px;
+    font-size: 24px;
+  }
 
-    /* .signup-link removido */
+  .logo-img {
+    width: 200px !important;
+    height: 52px;
+  }
 
-    .error-list {
-        padding: 12px;
-    }
+  .form-control {
+    padding: 14px;
+    font-size: 15px;
+    margin-bottom: 18px;
+  }
 
-    .error-list li {
-        font-size: 12px;
-    }
+  .btn-login {
+    padding: 14px;
+    font-size: 15px;
+    margin-bottom: 20px;
+  }
+}
+
+/* Smartphones (substitui só algumas linhas do seu bloco @media (max-width: 480px)) */
+@media (max-width: 480px) {
+  body {
+    padding: 12px;
+    align-items: flex-start;
+    padding-top: 6vh; /* um pouco mais de respiro em telas baixas */
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+
+  .login-card {
+    /* ocupa quase toda a largura, com margem consistente */
+    width: calc(100vw - 24px);
+    max-width: 520px; /* só por segurança */
+    padding: 28px 20px;
+    margin: 0 auto;
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  }
+
+  .logo {
+    /* Remova width/height fixos aqui se possível; deixe o img controlar */
+    width: auto;
+    height: auto;
+    font-size: 22px;
+    gap: 8px;
+  }
+
+  .logo-img {
+    width: clamp(220px, 70vw, 300px) !important;
+    height: auto;
+    margin-right: 8px;
+  }
+}
+
+/* Smartphones pequenos (substitui só algumas linhas do seu bloco @media (max-width: 360px)) */
+@media (max-width: 360px) {
+  body {
+    padding: 8px;
+    padding-top: 5vh;
+    padding-left: max(8px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
+  }
+
+  .login-card {
+    width: calc(100vw - 16px);
+    padding: 24px 16px;
+  }
+
+  .logo-img {
+    width: clamp(200px, 78vw, 280px) !important;
+    height: auto;
+  }
 }

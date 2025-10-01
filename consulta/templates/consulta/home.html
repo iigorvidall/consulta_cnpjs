@@ -53,7 +53,7 @@
                                 style="color:var(--ignea-muted); font-weight:600;">CNPJ(s)</label>
                             <input id="cnpjs" name="cnpjs" type="text"
                                 placeholder="Digite um ou mais CNPJs, separados por vírgula" class="ignea-input"
-                                pattern="[0-9,\s-\/]*"
+                                pattern="[-0-9, /]*" inputmode="numeric"
                                 title="Apenas números, vírgulas, traços, barras e espaços são permitidos">
                         </div>
 
@@ -101,6 +101,9 @@
                         <select id="res-search-field" class="ignea-select">
                             <option value="processo">Processo</option>
                             <option value="cnpj" selected>CNPJ</option>
+                            <option value="dsevento">DSEvento</option>
+                            <option value="oportunidade">OPORTUNIDADE</option>
+                            <option value="substancias">Substâncias</option>
                             <option value="nome">Nome</option>
                             <option value="email">E-mail</option>
                         </select>
@@ -137,6 +140,9 @@
                                 <tr>
                                     <th class="p-3">Processo</th>
                                     <th class="p-3">CNPJ</th>
+                                    <th class="p-3">DSEvento</th>
+                                    <th class="p-3">Oportunidade</th>
+                                    <th class="p-3">Substâncias</th>
                                     <th class="p-3">Nome da empresa</th>
                                     <th class="p-3">E-mail da empresa</th>
                                     <th class="p-3" style="text-align:center;">Detalhes</th>
@@ -147,6 +153,9 @@
                                 <tr class="ignea-table-row">
                                     <td class="p-3">{{ r.processo }}</td>
                                     <td class="p-3">{{ r.cnpj }}</td>
+                                    <td class="p-3">{{ r.dsevento }}</td>
+                                    <td class="p-3">{{ r.oportunidade }}</td>
+                                    <td class="p-3">{{ r.substancias }}</td>
                                     <td class="p-3">{{ r.nome }}</td>
                                     <td class="p-3">{{ r.email|email_or_dash }}</td>
                                     <td class="p-3" style="text-align:center;">
@@ -182,6 +191,9 @@
                         <select id="his-search-field" class="ignea-select">
                             <option value="processo">Processo</option>
                             <option value="cnpj" selected>CNPJ</option>
+                            <option value="dsevento">DSEvento</option>
+                            <option value="oportunidade">OPORTUNIDADE</option>
+                            <option value="substancias">Substâncias</option>
                             <option value="nome">Nome</option>
                             <option value="email">E-mail</option>
                         </select>
@@ -235,6 +247,9 @@
                                     <th class="p-3">Data</th>
                                     <th class="p-3">Processo</th>
                                     <th class="p-3">CNPJ</th>
+                                    <th class="p-3">DSEvento</th>
+                                    <th class="p-3">OPORTUNIDADE</th>
+                                    <th class="p-3">Substâncias</th>
                                     <th class="p-3">Nome</th>
                                     <th class="p-3">E-mail</th>
                                     <th class="p-3" style="text-align:center;">Detalhes</th>
@@ -248,6 +263,9 @@
                                     <td class="p-3">{{ h.data|date:"d/m/y" }}</td>
                                     <td class="p-3">{{ item.processo }}</td>
                                     <td class="p-3">{{ item.cnpj }}</td>
+                                    <td class="p-3">{{ item.dsevento }}</td>
+                                    <td class="p-3">{{ item.oportunidade }}</td>
+                                    <td class="p-3">{{ item.substancias }}</td>
                                     <td class="p-3">{{ item.nome }}</td>
                                     <td class="p-3">{{ item.email|email_or_dash }}</td>
                                     <td class="p-3" style="text-align:center;">
@@ -296,7 +314,7 @@
     </div>
 
     <!-- Removido todo JS inline. O comportamento é carregado via arquivos em static. -->
-    <script src="{% static 'js/home.js' %}" defer></script>
+    <script src="{% static 'js/home.js' %}?v=4" defer></script>
 </body>
 
 </html>

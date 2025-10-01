@@ -271,7 +271,12 @@ def _init_job_session(request, items):
 			p = (it.get('processo') or None)
 			key = (c, (p or '')) if c else None
 			if c and key not in seen:
-				normalized.append({'cnpj': c, 'processo': p})
+				payload = {'cnpj': c, 'processo': p}
+				# Preserve campos extras vindos do upload/entrada
+				for k in ('dsevento', 'oportunidade', 'substancias'):
+					if k in it and it[k] is not None:
+						payload[k] = it[k]
+				normalized.append(payload)
 				seen.add(key)
 		else:
 			c = clean_cnpj(it)
@@ -335,8 +340,21 @@ def jobs_start(request):
 						headers = [str(c.value).strip().lower() if c.value else '' for c in header_row]
 						keys = ['cnpj', 'cnpj/cpf', 'cnpj_cpf']
 						pkeys = ['processo', 'número do processo', 'numero do processo']
+						# extras
+						ds_keys = ['dsevento', 'ds evento', 'ds_evento']
+						op_keys = ['oportunidade']
+						sub_keys = ['substancias', 'substâncias', 'substancia']
 						cnpj_idx = None
 						proc_idx = None
+						ds_idx = None
+						op_idx = None
+						sub_idx = None
+						import unicodedata as _ud
+						def _norm(s):
+							if s is None: return ''
+							s = str(s)
+							s = _ud.normalize('NFKD', s).encode('ASCII', 'ignore').decode('ASCII')
+							return s.lower().strip()
 						for idx, h in enumerate(headers):
 							if any(k in h for k in keys):
 								cnpj_idx = idx
@@ -345,13 +363,36 @@ def jobs_start(request):
 							if any(k in h for k in pkeys):
 								proc_idx = idx
 								break
+						# extras
+						for idx, h in enumerate(headers):
+							hn = _norm(h)
+							if ds_idx is None and any(k in hn for k in ds_keys):
+								ds_idx = idx
+							if op_idx is None and any(k in hn for k in op_keys):
+								op_idx = idx
+							if sub_idx is None and any(k in hn for k in sub_keys):
+								sub_idx = idx
+						print(f"[UPLOAD-XLSX] Headers: {headers}")
+						print(f"[UPLOAD-XLSX] idx -> cnpj:{cnpj_idx} proc:{proc_idx} ds:{ds_idx} op:{op_idx} sub:{sub_idx}")
 						if cnpj_idx is not None:
 							for row in ws.iter_rows(min_row=2):
 								val = row[cnpj_idx].value if cnpj_idx < len(row) else ''
 								cnpj_val = clean_cnpj(str(val) if val is not None else '')
 								proc_val = (str(row[proc_idx].value).strip() if (proc_idx is not None and row[proc_idx].value) else None)
 								if len(cnpj_val) == 14:
-									items.append({'cnpj': cnpj_val, 'processo': proc_val})
+									item_payload = {'cnpj': cnpj_val, 'processo': proc_val}
+									# extras
+									try:
+										if ds_idx is not None:
+											item_payload['dsevento'] = str(row[ds_idx].value).strip() if row[ds_idx].value else None
+										if op_idx is not None:
+											item_payload['oportunidade'] = str(row[op_idx].value).strip() if row[op_idx].value else None
+										if sub_idx is not None:
+											item_payload['substancias'] = str(row[sub_idx].value).strip() if row[sub_idx].value else None
+									except Exception:
+										pass
+									print(f"[UPLOAD-XLSX] item -> proc:{item_payload.get('processo')} dsev:{item_payload.get('dsevento')} op:{item_payload.get('oportunidade')} sub:{item_payload.get('substancias')}")
+									items.append(item_payload)
 						else:
 							# Fallback: varre todas as células procurando padrões de CNPJ
 							pattern = re.compile(r"\d{2}\D?\d{3}\D?\d{3}\D?\d{4}\D?\d{2}")
@@ -377,12 +418,19 @@ def jobs_start(request):
 						# Tenta DictReader primeiro
 						try:
 							reader = _csv.DictReader(sio)
-							keys = ['cnpj', 'CNPJ', 'CNPJ/CPF', 'cnpj_cpf']
-							pkeys = ['processo', 'Processo', 'número do processo', 'numero do processo']
+							keys = ['cnpj', 'CNPJ', 'CNPJ/CPF', 'cnpj_cpf', 'NRCPFCNPJ', 'nrcpfcnpj', 'CNPJCPF']
+							pkeys = ['processo', 'Processo', 'número do processo', 'numero do processo', 'dsprocesso', 'DSProcesso']
+							ds_keys = ['dsevento', 'ds evento', 'ds_evento']
+							op_keys = ['oportunidade']
+							sub_keys = ['substancias', 'substâncias', 'substancia']
 							found_by_header = False
+							print(f"[UPLOAD-CSV] Headers: {reader.fieldnames}")
 							for row in reader:
 								matched_this_row = False
 								proc_val = None
+								dsevento_val = None
+								oportunidade_val = None
+								substancias_val = None
 								for key in row:
 									if key is None:
 										continue
@@ -394,19 +442,50 @@ def jobs_start(request):
 												if any(pk.lower() in k2.lower() for pk in pkeys):
 													proc_val = (row[k2] or '').strip()
 													break
-											items.append({'cnpj': cnpj_val, 'processo': proc_val})
+											# extras por cabeçalho
+											for k3 in row:
+												kn = (k3 or '').lower()
+												if dsevento_val is None and any(ds in kn for ds in ds_keys):
+													dsevento_val = (row[k3] or '').strip()
+												if oportunidade_val is None and any(op in kn for op in op_keys):
+													oportunidade_val = (row[k3] or '').strip()
+												if substancias_val is None and any(sb in kn for sb in sub_keys):
+													substancias_val = (row[k3] or '').strip()
+											payload = {'cnpj': cnpj_val, 'processo': proc_val, 'dsevento': dsevento_val, 'oportunidade': oportunidade_val, 'substancias': substancias_val}
+											print(f"[UPLOAD-CSV] row -> proc:{payload['processo']} dsev:{payload['dsevento']} op:{payload['oportunidade']} sub:{payload['substancias']}")
+											items.append(payload)
 											matched_this_row = True
 											found_by_header = True
 								if not matched_this_row:
 									# Fallback por linha: vasculha todos os valores
 									pattern = re.compile(r"\d{2}\D?\d{3}\D?\d{3}\D?\d{4}\D?\d{2}")
+									cnpj_candidates = []
 									for v in row.values():
 										if not v:
 											continue
 										for m in pattern.findall(str(v)):
 											digits = clean_cnpj(m)
 											if len(digits) == 14:
-												items.append({'cnpj': digits, 'processo': None})
+												cnpj_candidates.append(digits)
+									# tenta obter processo e extras por cabeçalho mesmo no fallback
+									for digits in cnpj_candidates:
+										proc_val = None
+										dsevento_val = None
+										oportunidade_val = None
+										substancias_val = None
+										for k2 in row:
+											if any(pk.lower() in k2.lower() for pk in pkeys):
+												proc_val = (row[k2] or '').strip()
+											kn = (k2 or '').lower()
+											if dsevento_val is None and any(ds in kn for ds in ds_keys):
+												dsevento_val = (row[k2] or '').strip()
+											if oportunidade_val is None and any(op in kn for op in op_keys):
+												oportunidade_val = (row[k2] or '').strip()
+											if substancias_val is None and any(sb in kn for sb in sub_keys):
+												substancias_val = (row[k2] or '').strip()
+										payload = {'cnpj': digits, 'processo': proc_val, 'dsevento': dsevento_val, 'oportunidade': oportunidade_val, 'substancias': substancias_val}
+										print(f"[UPLOAD-CSV:FALLBACK] row -> proc:{payload['processo']} dsev:{payload['dsevento']} op:{payload['oportunidade']} sub:{payload['substancias']}")
+										items.append(payload)
 						except Exception:
 							# Se DictReader não funcionar bem (csv caótico), usa csv.reader
 							sio.seek(0)
@@ -466,6 +545,12 @@ def jobs_step(request):
 	# anexa processo se existir
 	if isinstance(item, dict) and item.get('processo'):
 		resultado['processo'] = item['processo']
+	# propaga campos extras se vierem do upload
+	if isinstance(item, dict):
+		for k in ('dsevento', 'oportunidade', 'substancias'):
+			if k in item and item[k] is not None:
+				resultado[k] = item[k]
+	print(f"[JOB-STEP] cnpj:{cnpj} proc:{resultado.get('processo')} dsev:{resultado.get('dsevento')} op:{resultado.get('oportunidade')} sub:{resultado.get('substancias')}")
 	results.append(resultado)
 	processed += 1
 	job.update({'queue': queue, 'processed': processed, 'total': total, 'results': results})

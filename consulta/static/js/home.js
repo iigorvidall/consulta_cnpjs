@@ -151,6 +151,9 @@ document.getElementById('consultaForm').addEventListener('submit', async functio
             tr.innerHTML = `
                 <td style="padding:8px;">${r.processo || ''}</td>
                 <td style="padding:8px;">${cnpjVal}</td>
+                <td style=\"padding:8px;\">${r.dsevento || ''}</td>
+                <td style=\"padding:8px;\">${r.oportunidade || ''}</td>
+                <td style=\"padding:8px;\">${r.substancias || ''}</td>
                 <td style="padding:8px;">${r.nome || '-'}</td>
                 <td style="padding:8px;">${email}</td>
                 <td style="padding:8px; text-align:center;">
@@ -366,7 +369,9 @@ async function openDetailsModalForCNPJ(cnpj) {
         const addressLine = [addr.street, addr.number, addr.district].filter(Boolean).join(', ');
     const cityLine = [addr.city, addr.state, addr.zip].filter(Boolean).join(' - ');
     const countryName = (addr.country && addr.country.name) ? addr.country.name : null;
-    const municipality = (addr.municipality != null) ? String(addr.municipality) : null;
+    // Prefer the city name for municipality display; fall back to numeric IBGE code only if city is unavailable
+    const municipalityName = addr.city ? String(addr.city) : null;
+    const municipalityCode = (addr.municipality != null) ? String(addr.municipality) : null;
     const details = addr.details ? String(addr.details) : null;
     const emails = Array.isArray(data.emails) ? data.emails.map(e => e.address).filter(Boolean) : [];
     const phones = Array.isArray(data.phones) ? data.phones.map(p => `${p.type ? p.type+': ' : ''}${p.area||''} ${p.number||''}`.trim()).filter(Boolean) : [];
@@ -389,7 +394,11 @@ async function openDetailsModalForCNPJ(cnpj) {
     html += `<div class="kv"><strong>Atividade Principal:</strong> ${esc(mainAct)}</div>`;
         if (addressLine || cityLine) html += `<div class=\"kv\"><strong>Endereço:</strong> ${esc(addressLine)}${addressLine && cityLine ? ' - ' : ''}${esc(cityLine)}</div>`;
         if (details) html += `<div class=\"kv\"><strong>Complemento:</strong> ${esc(details)}</div>`;
-        if (municipality) html += `<div class=\"kv\"><strong>Município (IBGE):</strong> ${esc(municipality)}</div>`;
+        if (municipalityName) {
+            html += `<div class=\"kv\"><strong>Município:</strong> ${esc(municipalityName)}</div>`;
+        } else if (municipalityCode) {
+            html += `<div class=\"kv\"><strong>Município (IBGE):</strong> ${esc(municipalityCode)}</div>`;
+        }
         if (countryName) html += `<div class=\"kv\"><strong>País:</strong> ${esc(countryName)}</div>`;
     if (emails.length) html += `<div class="kv"><strong>E-mails:</strong> ${esc(emails.join(' | '))}</div>`;
     if (phones.length) html += `<div class="kv"><strong>Telefones:</strong> ${esc(phones.join(' | '))}</div>`;
@@ -455,9 +464,11 @@ function setupDelegatesAndFilters(){
         const digits = normalizeDigits(raw);
         const procMask = normalizeProcesso(raw);
         // Map col index per table layout
-        // Resultado: [Processo(0), CNPJ(1), Nome(2), Email(3)]
-        // Histórico: [Data(0), Processo(1), CNPJ(2), Nome(3), Email(4)]
-        const map = tbody.closest('#tab-resultado') ? {processo:0, cnpj:1, nome:2, email:3} : {processo:1, cnpj:2, nome:3, email:4};
+        // Resultado: [Processo(0), CNPJ(1), DSEvento(2), OPORTUNIDADE(3), Substâncias(4), Nome(5), Email(6), Detalhes(7)]
+        // Histórico: [Data(0), Processo(1), CNPJ(2), DSEvento(3), OPORTUNIDADE(4), Substâncias(5), Nome(6), Email(7), Detalhes(8)]
+        const map = tbody.closest('#tab-resultado')
+            ? { processo:0, cnpj:1, dsevento:2, oportunidade:3, substancias:4, nome:5, email:6 }
+            : { processo:1, cnpj:2, dsevento:3, oportunidade:4, substancias:5, nome:6, email:7 };
         const idx = map[field] ?? map['cnpj'];
         let visible = 0;
         rows.forEach(tr => {

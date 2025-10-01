@@ -313,6 +313,7 @@ a.ignea-button:focus {
     z-index: 2;
     background-color: var(--ignea-brown);
     color: var(--ignea-text);
+    padding-left: 8px !important;
 }
 
 /* Quebra de linha padrão (sem quebrar por caractere) */
@@ -384,37 +385,44 @@ a.ignea-button:focus {
 }
 
 /* Larguras fixas de colunas */
-/* Resultado: Processo(1) 200px, CNPJ(2) 200px, Email(4) 300px, Detalhes(5) 120px */
+/* Resultado: Processo(1)=150px, CNPJ(2)=150px, Substâncias(5)=150px, Email(7)=300px, Detalhes(8)=120px */
 #tab-resultado table thead th:nth-child(1),
 #tab-resultado table tbody td:nth-child(1) {
-    width: 200px;
-    min-width: 200px;
-    max-width: 200px;
+    width: 100px;
+    min-width: 100px;
+    max-width: 100px;
 }
 
 #tab-resultado table thead th:nth-child(2),
 #tab-resultado table tbody td:nth-child(2) {
+    width: 150px;
+    min-width: 150px;
+    max-width: 150px;
+}
+
+#tab-resultado table thead th:nth-child(5),
+#tab-resultado table tbody td:nth-child(5) {
+    width: 150px;
+    min-width: 150px;
+    max-width: 150px;
+}
+
+#tab-resultado table thead th:nth-child(7),
+#tab-resultado table tbody td:nth-child(7) {
     width: 200px;
     min-width: 200px;
     max-width: 200px;
 }
 
-#tab-resultado table thead th:nth-child(4),
-#tab-resultado table tbody td:nth-child(4) {
-    width: 300px;
-    min-width: 300px;
-    max-width: 300px;
-}
-
-#tab-resultado table thead th:nth-child(5),
-#tab-resultado table tbody td:nth-child(5) {
+#tab-resultado table thead th:nth-child(8),
+#tab-resultado table tbody td:nth-child(8) {
     width: 120px;
     min-width: 120px;
     max-width: 120px;
     text-align: center;
 }
 
-/* Histórico: Data(1) 120px, Processo(2) 200px, CNPJ(3) 200px, Email(5) 300px, Detalhes(6) 120px */
+/* Histórico: Data(1)=120px, Processo(2)=150px, CNPJ(3)=150px, Substâncias(6)=150px, Email(8)=300px, Detalhes(9)=120px */
 #tab-historico table thead th:nth-child(1),
 #tab-historico table tbody td:nth-child(1) {
     width: 120px;
@@ -424,27 +432,34 @@ a.ignea-button:focus {
 
 #tab-historico table thead th:nth-child(2),
 #tab-historico table tbody td:nth-child(2) {
-    width: 200px;
-    min-width: 200px;
-    max-width: 200px;
+    width: 100px;
+    min-width: 100px;
+    max-width: 100px;
 }
 
 #tab-historico table thead th:nth-child(3),
 #tab-historico table tbody td:nth-child(3) {
+    width: 150px;
+    min-width: 150px;
+    max-width: 150px;
+}
+
+#tab-historico table thead th:nth-child(6),
+#tab-historico table tbody td:nth-child(6) {
+    width: 150px;
+    min-width: 150px;
+    max-width: 150px;
+}
+
+#tab-historico table thead th:nth-child(8),
+#tab-historico table tbody td:nth-child(8) {
     width: 200px;
     min-width: 200px;
     max-width: 200px;
 }
 
-#tab-historico table thead th:nth-child(5),
-#tab-historico table tbody td:nth-child(5) {
-    width: 300px;
-    min-width: 300px;
-    max-width: 300px;
-}
-
-#tab-historico table thead th:nth-child(6),
-#tab-historico table tbody td:nth-child(6) {
+#tab-historico table thead th:nth-child(9),
+#tab-historico table tbody td:nth-child(9) {
     width: 120px;
     min-width: 120px;
     max-width: 120px;
@@ -490,25 +505,29 @@ a.ignea-button:focus {
     }
 
     /* Mantém tokens sem espaços numa linha só (evita 1 char/linha) */
-    /* Resultado: Processo(1), CNPJ(2), Email(4) */
+    /* Resultado: Processo(1), CNPJ(2), Substâncias(5), Email(7) */
     #tab-resultado table th:nth-child(1),
     #tab-resultado table td:nth-child(1),
     #tab-resultado table th:nth-child(2),
     #tab-resultado table td:nth-child(2),
-    #tab-resultado table th:nth-child(4),
-    #tab-resultado table td:nth-child(4) {
+    #tab-resultado table th:nth-child(5),
+    #tab-resultado table td:nth-child(5),
+    #tab-resultado table th:nth-child(7),
+    #tab-resultado table td:nth-child(7) {
         white-space: nowrap;
     }
 
-    /* Histórico: Data(1), Processo(2), CNPJ(3), Email(5) */
+    /* Histórico: Data(1), Processo(2), CNPJ(3), Substâncias(6), Email(8) */
     #tab-historico table th:nth-child(1),
     #tab-historico table td:nth-child(1),
     #tab-historico table th:nth-child(2),
     #tab-historico table td:nth-child(2),
     #tab-historico table th:nth-child(3),
     #tab-historico table td:nth-child(3),
-    #tab-historico table th:nth-child(5),
-    #tab-historico table td:nth-child(5) {
+    #tab-historico table th:nth-child(6),
+    #tab-historico table td:nth-child(6),
+    #tab-historico table th:nth-child(8),
+    #tab-historico table td:nth-child(8) {
         white-space: nowrap;
     }
 
